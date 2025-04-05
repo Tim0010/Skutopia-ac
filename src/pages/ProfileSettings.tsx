@@ -1,6 +1,6 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext"; // Assuming useAuth provides user and maybe refresh mechanism
-import { fetchUserProfile, updateUserProfile, uploadAvatar, UserProfile } from "@/data/userService";
+import { fetchUserProfile, updateUserProfile, uploadAvatar, UserProfile, deleteCurrentUserAccount } from "@/data/userService";
 import { supabase } from "@/lib/supabaseClient"; // Direct import for session
 
 // Shadcn UI imports (replace with your actual UI library components)
@@ -34,6 +34,11 @@ export default function ProfileSettingsPage() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState<boolean>(false);
     const [isDeleting, setIsDeleting] = useState<boolean>(false); // State for deletion loading
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
 
     // Fetch profile data when user is available
     useEffect(() => {
@@ -157,25 +162,54 @@ export default function ProfileSettingsPage() {
         }
     };
 
-    // Handle Account Deletion
+    // --- Handle Password Change ---
+    const handleChangePassword = async (e: FormEvent) => {
+        e.preventDefault();
+        setPasswordError(null);
+        if (!newPassword || !confirmPassword) {
+            setPasswordError("New password and confirmation are required.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError("New passwords do not match.");
+            return;
+        }
+        if (newPassword.length < 6) { // Example minimum length
+             setPasswordError("Password must be at least 6 characters.");
+             return;
+        }
+        // Note: Supabase updateUser doesn't require current password, but you might want 
+        // to verify it separately for security if needed via a custom function.
+
+        setIsChangingPassword(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) {
+                throw error;
+            }
+            toast.success("Password updated successfully!");
+            // Clear fields after success
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: any) {
+            console.error("Password update error:", error);
+            setPasswordError(`Failed to update password: ${error.message}`);
+            toast.error("Failed to update password.");
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    // --- Handle Account Deletion ---
     const handleConfirmDelete = async () => {
         if (!user?.id) return;
         setIsDeleting(true);
         try {
-            // --- TODO: Implement Backend Deletion Logic --- \
-            // This needs a secure backend function (e.g., Supabase Edge Function)
-            // to call supabase.auth.admin.deleteUser(user.id)
-            console.warn(
-                "Account deletion requested for user:",
-                user.id,
-                "Backend function not implemented yet."
-            );
-            // Simulating deletion for now:
-            await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate network delay
+            // Call the service function to invoke the Edge Function
+            await deleteCurrentUserAccount();
 
-            // --- End TODO ---
-
-            toast.success("Account deleted successfully.");
+            toast.success("Account successfully requested for deletion. You will be logged out.");
             await logout(); // Log the user out
             navigate("/"); // Redirect to homepage
         } catch (error: any) {
@@ -183,7 +217,7 @@ export default function ProfileSettingsPage() {
             toast.error(`Failed to delete account: ${error.message}`);
             setIsDeleting(false);
         } 
-        // No finally block to set isDeleting to false, as successful deletion logs out/redirects
+        // No finally block here, as success leads to logout/redirect
     };
 
     // Render loading state
@@ -264,7 +298,53 @@ export default function ProfileSettingsPage() {
                 </form>
             </Card>
 
-            <Card>
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>Update your account password.</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleChangePassword}>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">New Password</Label>
+                            <Input
+                                id="newPassword"
+                                name="newPassword"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter new password (min. 6 characters)"
+                                disabled={isChangingPassword}
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                            <Input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirm your new password"
+                                disabled={isChangingPassword}
+                                required
+                            />
+                        </div>
+                        {passwordError && (
+                           <p className="text-sm text-red-600 pt-1">{passwordError}</p>
+                        )}
+                    </CardContent>
+                    <CardFooter>
+                        <Button type="submit" disabled={isChangingPassword}>
+                            {isChangingPassword ? "Changing Password..." : "Change Password"}
+                        </Button>
+                    </CardFooter>
+                </form>
+            </Card>
+
+            <Card className="mb-6">
                 <CardHeader>
                     <CardTitle>Profile Picture</CardTitle>
                     <CardDescription>Upload or change your avatar.</CardDescription>

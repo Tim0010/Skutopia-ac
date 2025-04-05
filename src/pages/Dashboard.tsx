@@ -327,40 +327,23 @@ const Dashboard = () => {
       });
   }, [user]);
 
-  if (loadingData) return <p className="p-6 text-center">Loading dashboard data...</p>;
-  if (fetchError) return <p className="p-6 text-center text-red-600">Error loading dashboard: {fetchError}</p>;
-  if (!user) return <p className="p-6 text-center">User not found.</p>;
-
-  // Helper to get icon based on activity type
-  const getActivityIcon = (type: ActivityItem['type']) => {
-    switch (type) {
-      case 'quiz_start':
-      case 'quiz_complete':
-        return <Award size={18} className="mr-3 text-blue-500" />;
-      case 'video_watch':
-        return <Video size={18} className="mr-3 text-red-500" />;
-      case 'flashcard_session':
-        return <BookOpen size={18} className="mr-3 text-green-500" />;
-      case 'material_view':
-        return <FileText size={18} className="mr-3 text-purple-500" />;
-      default:
-        return <Activity size={18} className="mr-3 text-gray-500" />;
-    }
-  };
+  if (loading) return <p className="p-6 text-center">Loading dashboard...</p>;
+  if (error) return <p className="p-6 text-center text-red-600">Error: {error}</p>;
+  if (!dashboardData) return <p className="p-6 text-center">No dashboard data found.</p>;
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-950 min-h-screen font-sans">
       {/* Header Section */}
       <div className="mb-8 p-4 bg-white dark:bg-gray-800/50 shadow rounded-lg flex items-center space-x-4 border dark:border-gray-700/50">
         <img
-          src={user.avatarUrl || '/default-avatar.png'}
-          alt={`${user.name}'s Avatar`}
-          className="w-16 h-16 rounded-full border-2 border-skutopia-500"
+          src={dashboardData.user.avatar_url || '/default-avatar.png'}
+          alt={`${dashboardData.user.name}'s Avatar`}
+          className="w-16 h-16 rounded-full border-2 border-blue-500"
           onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.png'; }}
         />
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Welcome back, {user.name}! 👋</h1>
-          <p className="text-gray-600 dark:text-gray-400">Let's continue your learning journey.</p>
+          <h1 className="text-3xl font-bold text-gray-800">Welcome back, {dashboardData.user.name}! 👋</h1>
+          <p className="text-gray-600">Let's continue your learning journey.</p>
         </div>
       </div>
 

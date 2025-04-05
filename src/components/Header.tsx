@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, MenuIcon, Search, X } from "lucide-react";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { Bell, MenuIcon, Search, X, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,12 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
+import NotificationDropdown from "./NotificationDropdown";
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -77,40 +78,32 @@ const Header = () => {
           </div>
 
           <div className="flex items-center">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-skutopia-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-skutopia-500"></span>
-              </span>
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="ml-2 relative rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800"
-                >
-                  <span className="sr-only">Open user menu</span>
-                  <Avatar>
-                    <AvatarImage src={user?.avatarUrl} />
-                    <AvatarFallback>{user?.name ? getInitials(user.name) : "U"}</AvatarFallback>
-                  </Avatar>
+                <Button variant="ghost" size="icon" className="relative">
+                  <span className="sr-only">Notifications</span>
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>
-                  <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-gray-500">{user?.email}</p>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/dashboard")}>Dashboard</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/profile-settings")}>Profile</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/profile-settings")}>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="p-0">
+                <NotificationDropdown />
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="ml-2"
+              onClick={() => navigate("/profile-settings")}
+            >
+              <span className="sr-only">Settings</span>
+              <Settings className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -160,6 +153,12 @@ const Header = () => {
               className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-skutopia-100 hover:text-skutopia-700"
             >
               Scholarships
+            </a>
+            <a
+              href="/profile-settings"
+              className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-skutopia-100 hover:text-skutopia-700"
+            >
+              Settings
             </a>
           </div>
         </div>

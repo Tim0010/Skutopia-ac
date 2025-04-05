@@ -10,6 +10,7 @@ export interface Video {
     subject: string;
     topic: string;
     video_url: string;
+    thumbnail_url?: string; // Add optional thumbnail URL field
     uploaded_by: string | null; // UUID of user or null
     created_at: string;
 }

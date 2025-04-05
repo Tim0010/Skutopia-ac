@@ -80,12 +80,6 @@ export default function Dashboard({ userId }: DashboardProps) {
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
       {/* Header Section */}
       <div className="mb-8 p-4 bg-white shadow rounded-lg flex items-center space-x-4">
-        <img
-          src={user.avatar_url || '/default-avatar.png'} // Provide a fallback default avatar
-          alt={`${user.name}'s Avatar`}
-          className="w-16 h-16 rounded-full border-2 border-blue-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.png'; }} // Handle image load error
-        />
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Welcome back, {user.name}! 👋</h1>
           <p className="text-gray-600">Let's continue your learning journey.</p>

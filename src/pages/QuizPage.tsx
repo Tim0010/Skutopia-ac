@@ -20,6 +20,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import QuizReview from './QuizReview.tsx'; // We'll create this next
+import { createNotification } from '@/data/notificationService';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 // Constants
 const QUESTION_TIME_LIMIT = 90; // Seconds per question
@@ -28,6 +30,7 @@ type QuizState = 'selecting' | 'taking' | 'submitting' | 'reviewing' | 'error';
 
 const QuizPage: React.FC = () => {
     const { user } = useAuth();
+    const { fetchNotifs } = useNotifications(); // Get fetchNotifs from context
     const [quizState, setQuizState] = useState<QuizState>('selecting');
 
     // Filters
@@ -152,21 +155,37 @@ const QuizPage: React.FC = () => {
         setQuizState('submitting');
         setLoading(prev => ({ ...prev, submit: true }));
 
-        // Format answers for saving
         const answersToSave = Object.entries(userAnswers).map(([quizId, selectedAnswer]) => ({
-            quizId: quizId, // quizId from Object.entries is already the string (UUID) we need
-            selectedAnswer: selectedAnswer, // Can be null if timed out
+            quizId: quizId,
+            selectedAnswer: selectedAnswer,
         }));
 
         try {
-            // 1. Save the raw answers first
+            // 1. Save the raw answers
             await saveUserQuizAnswers(user.id, quizAttemptId, answersToSave);
-            toast({ title: "Answers Saved", description: "Evaluating your quiz...", variant: "default" });
-
-            // 2. Trigger evaluation (backend compares answers)
-            const results = await evaluateQuizAttempt(user.id, quizAttemptId);
+            
+            // 2. Trigger evaluation (assuming it returns void or just success status)
+            await evaluateQuizAttempt(user.id, quizAttemptId);
+            
             setQuizState('reviewing');
             toast({ title: "Quiz Submitted!", description: "Review your results.", variant: "default" });
+
+            // 3. Create Generic Notification 
+            try {
+                await createNotification({
+                    user_id: user.id,
+                    // Generic message as score is not available here
+                    message: `Your results for the ${selectedTopic || 'recent'} quiz are ready!`,
+                    // Link to quiz page or dashboard. Ideally, link to the specific review if possible.
+                    // Linking directly to review might require passing quizAttemptId differently.
+                    link: `/dashboard`, 
+                    type: 'quiz'
+                });
+                // Refresh notifications in the header
+                fetchNotifs(); 
+            } catch (notifError) {
+                console.error("Failed to create quiz submission notification:", notifError);
+            }
 
         } catch (error: any) {
             console.error("Error submitting quiz:", error);
@@ -176,7 +195,7 @@ const QuizPage: React.FC = () => {
         } finally {
             setLoading(prev => ({ ...prev, submit: false }));
         }
-    }, [user, quizAttemptId, userAnswers, toast]);
+    }, [user, quizAttemptId, userAnswers, toast, selectedTopic, fetchNotifs]); // Keep dependencies
 
     /**
      * Handles selecting an answer for a specific question.

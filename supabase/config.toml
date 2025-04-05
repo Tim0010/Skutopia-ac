@@ -10,6 +10,7 @@ entrypoint = "./functions/send-contact-email/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-contact-email/*.html" ]
 
+<<<<<<< HEAD
 [functions.ask-muzanga]
 enabled = true
 verify_jwt = true
@@ -20,3 +21,15 @@ entrypoint = "./functions/ask-muzanga/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/ask-muzanga/*.html" ]
+=======
+[functions.delete-user-account]
+enabled = true
+verify_jwt = true
+import_map = "./functions/delete-user-account/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/delete-user-account/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/delete-user-account/*.html" ]
+>>>>>>> fb01e1f9e7f74a5d6bee34567856ae6a415a7e65

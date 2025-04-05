@@ -42,74 +42,79 @@ import MentorDashboard from "./pages/admin/MentorDashboard";
 import AdminMentors from "./pages/admin/AdminMentors";
 import AdminQuizzes from "./pages/admin/AdminQuizzes";
 import QuizBuilder from "./pages/admin/QuizBuilder";
+import AnalyticsTracker from "./components/AnalyticsTracker";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            
-            {/* About Section Routes */}
-            <Route path="/our-mission" element={<OurMission />} />
-            <Route path="/our-team" element={<OurTeam />} />
-            <Route path="/contact-us" element={<ContactUs />} />
-            
-            {/* Resources Section Routes */}
-            <Route path="/study-materials" element={<StudyMaterials />} />
-            
-            {/* Legal Pages */}
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/cookie-policy" element={<CookiePolicy />} />
-            
-            {/* Community Page */}
-            <Route path="/join-community" element={<JoinCommunity />} />
-            
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/mentors" element={<MentorDirectory />} />
-              <Route path="/mentors/:id" element={<MentorProfile />} />
-              <Route path="/videos" element={<VideoLearning />} />
-              <Route path="/flashcards" element={<FlashcardsPage />} />
-              <Route path="/quizzes" element={<QuizPage />} />
-              <Route path="/quiz/:quizId" element={<QuizRunner />} />
-              <Route path="/pastpapers" element={<PastPapersPage />} />
-              <Route path="/scholarships" element={<ScholarshipsPage />} /> 
-              <Route path="/my-sessions" element={<MySessions />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/profile-settings" element={<ProfileSettingsPage />} />
-            </Route>
-            
-            {/* Admin Routes */}
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/mentor-dashboard" element={<MentorDashboard />} />
-              <Route path="/admin/mentors" element={<AdminMentors />} />
-              <Route path="/admin/videos" element={<AdminVideos />} />
-              <Route path="/admin/quizzes" element={<AdminQuizzes />} />
-              <Route path="/admin/quiz-builder/:quizId" element={<QuizBuilder />} />
-              <Route path="/admin/quiz-builder" element={<QuizBuilder />} />
-              <Route path="/admin/flashcards" element={<AdminDashboard />} />
-              <Route path="/admin/pastpapers" element={<AdminDashboard />} />
-              <Route path="/admin/scholarships" element={<AdminDashboard />} />
-              <Route path="/admin/settings" element={<AdminDashboard />} />
-            </Route>
+      <NotificationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnalyticsTracker />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              
+              {/* About Section Routes */}
+              <Route path="/our-mission" element={<OurMission />} />
+              <Route path="/our-team" element={<OurTeam />} />
+              <Route path="/contact-us" element={<ContactUs />} />
+              
+              {/* Resources Section Routes */}
+              <Route path="/study-materials" element={<StudyMaterials />} />
+              
+              {/* Legal Pages */}
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/cookie-policy" element={<CookiePolicy />} />
+              
+              {/* Community Page */}
+              <Route path="/join-community" element={<JoinCommunity />} />
+              
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/mentors" element={<MentorDirectory />} />
+                <Route path="/mentors/:id" element={<MentorProfile />} />
+                <Route path="/videos" element={<VideoLearning />} />
+                <Route path="/flashcards" element={<FlashcardsPage />} />
+                <Route path="/quizzes" element={<QuizPage />} />
+                <Route path="/quiz/:quizId" element={<QuizRunner />} />
+                <Route path="/pastpapers" element={<PastPapersPage />} />
+                <Route path="/scholarships" element={<ScholarshipsPage />} /> 
+                <Route path="/my-sessions" element={<MySessions />} />
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/profile-settings" element={<ProfileSettingsPage />} />
+              </Route>
+              
+              {/* Admin Routes */}
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/mentor-dashboard" element={<MentorDashboard />} />
+                <Route path="/admin/mentors" element={<AdminMentors />} />
+                <Route path="/admin/videos" element={<AdminVideos />} />
+                <Route path="/admin/quizzes" element={<AdminQuizzes />} />
+                <Route path="/admin/quiz-builder/:quizId" element={<QuizBuilder />} />
+                <Route path="/admin/quiz-builder" element={<QuizBuilder />} />
+                <Route path="/admin/flashcards" element={<AdminDashboard />} />
+                <Route path="/admin/pastpapers" element={<AdminDashboard />} />
+                <Route path="/admin/scholarships" element={<AdminDashboard />} />
+                <Route path="/admin/settings" element={<AdminDashboard />} />
+              </Route>
 
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </NotificationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

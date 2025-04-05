@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, RotateCcw, Share2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface QuizReviewProps {
@@ -43,6 +43,17 @@ const QuizReview: React.FC<QuizReviewProps> = ({ userId, quizAttemptId, onRestar
     const total = results.length;
     const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
 
+    // Function to handle WhatsApp sharing
+    const handleShare = () => {
+        // Simple message without topic for now
+        const message = `I scored ${score}/${total} (${percentage}%) on a quiz on Skutopia Academy! Check it out: ${window.location.origin}`;
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+        
+        // Open WhatsApp link in a new tab
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    };
+
     if (loading) {
         return (
             <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-[300px]">
@@ -73,9 +84,12 @@ const QuizReview: React.FC<QuizReviewProps> = ({ userId, quizAttemptId, onRestar
                     <CardTitle className="text-2xl">Quiz Results</CardTitle>
                     <CardDescription>You answered {score} out of {total} questions correctly ({percentage}%).</CardDescription>
                 </CardHeader>
-                <CardFooter>
+                <CardFooter className="flex flex-wrap gap-2">
                     <Button onClick={onRestart} variant="outline">
                          <RotateCcw className="mr-2 h-4 w-4" /> Take Another Quiz
+                    </Button>
+                    <Button onClick={handleShare} variant="default" className="bg-green-600 hover:bg-green-700 text-white">
+                         <Share2 className="mr-2 h-4 w-4" /> Share Results
                     </Button>
                 </CardFooter>
             </Card>
