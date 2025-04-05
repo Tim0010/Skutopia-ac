@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search } from "lucide-react";
 import { fetchMentors, Mentor } from '@/data/mentorshipService';
+import MentorCard from "@/components/MentorCard";
+
+// Hardcoded country mapping (using mentor names as keys)
+const mentorCountries: { [key: string]: string } = {
+  "Timothy": "Zambia",
+  "Omera": "India",
+  "Yonas": "Ethiopia",
+  "Victoria": "Kenya"
+};
 
 const MentorDirectory = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,30 +88,28 @@ const MentorDirectory = () => {
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {mentorsToDisplay.length > 0 ? (
-            mentorsToDisplay.map((mentor) => (
-              <Card key={mentor.id} className="overflow-hidden transition-shadow duration-300 hover:shadow-lg dark:bg-gray-800">
-                <CardHeader className="p-0 pt-4">
-                  <Avatar className="h-12 w-12 mx-auto mb-2">
-                    <AvatarImage src={mentor.avatar_url ?? undefined} alt={mentor.name ?? 'Mentor Avatar'} />
-                    <AvatarFallback>{mentor.name?.charAt(0).toUpperCase() ?? 'M'}</AvatarFallback>
-                  </Avatar>
-                </CardHeader>
-                <CardContent className="p-4 text-center">
-                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{mentor.name ?? 'N/A'}</CardTitle>
-                  <CardDescription className="text-sm text-indigo-600 dark:text-indigo-400 mb-1">
-                    {mentor.field}{mentor.occupation ? ` - ${mentor.occupation}` : ''}
-                  </CardDescription>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-3">
-                    {mentor.bio ?? 'No bio available.'}
-                  </p>
-                </CardContent>
-                <CardFooter className="p-4 bg-gray-50 dark:bg-gray-700/50 flex justify-center">
-                  <Button asChild size="sm">
-                    <Link to={`/mentors/${mentor.id}`}>View Profile</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))
+            mentorsToDisplay.map((mentor) => {
+              const imageFileName = mentor.avatar_url?.substring(mentor.avatar_url.lastIndexOf('/') + 1) ?? 'default-avatar.png'; 
+              const formLink = "https://forms.gle/71uVZY5piUu3M4hE6";
+              // Look up country from the hardcoded map
+              const country = mentorCountries[mentor.name ?? ''] || undefined; // Get country or undefined if name doesn't match
+
+              return (
+                <MentorCard
+                  key={mentor.id}
+                  name={mentor.name ?? 'N/A'}
+                  title={mentor.occupation ?? mentor.field ?? 'Mentor'}
+                  expertise={mentor.field ?? 'Various Topics'}
+                  imageFile={imageFileName}
+                  formLink={formLink}
+                  university={mentor.university}
+                  company={mentor.company}
+                  linkedin={mentor.linkedin}
+                  bio={mentor.bio}
+                  country={country} // Pass the country prop
+                />
+              );
+            })
           ) : (
             <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
               <p>No mentors found{searchTerm ? ' matching your search' : ''}.</p>

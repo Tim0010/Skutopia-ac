@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   ChevronLeft, BookMarked, TrendingUp, Award, 
-  BookOpen, Bookmark, Play, Search, Filter, Clock, Star
+  BookOpen, Bookmark, Play, Search, Filter, Clock, Star,
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import VideoLibrary, { Video } from "../components/VideoLibrary";
-import VideoDetails from "../components/VideoDetails";
-import SimpleVideoPlayer from "../components/SimpleVideoPlayer";
+import VideoCard from "@/components/VideoCard";
+import VideoDetails from "@/components/VideoDetails";
+import { fetchVideos, Video } from "@/data/videoService";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,13 +25,16 @@ interface Category {
 
 export default function VideoHub() {
   // State
+  const [allVideos, setAllVideos] = useState<Video[]>([]);
+  const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
-  const [recentlyWatched, setRecentlyWatched] = useState<Video[]>([]);
-  const [bookmarkedVideos, setBookmarkedVideos] = useState<Video[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
   // Categories
   const categories: Category[] = [
     {
@@ -65,190 +69,72 @@ export default function VideoHub() {
     }
   ];
   
-  // Sample video data
-  const videos: Video[] = [
-    {
-      id: "1",
-      title: "Introduction to Algebra",
-      description: "Learn the basics of algebra including variables, expressions, and equations. This video covers fundamental concepts that will help you build a strong foundation in algebraic thinking and problem-solving.",
-      thumbnail: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      duration: "15:30",
-      subject: "Mathematics",
-      grade: "Grade 10",
-      views: 1250,
-      rating: 4.8,
-      uploadDate: "2025-01-15",
-      instructor: "Mr. Mulenga",
-      category: "mathematics",
-      tags: ["algebra", "equations", "variables"]
-    },
-    {
-      id: "2",
-      title: "Cell Structure and Function",
-      description: "Explore the structure of cells and understand their various functions. Learn about cell organelles, membrane transport, and how cells work together in tissues and organs.",
-      thumbnail: "https://images.unsplash.com/photo-1530026186672-2cd00ffc50fe?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      duration: "18:45",
-      subject: "Biology",
-      grade: "Grade 11",
-      views: 980,
-      rating: 4.6,
-      uploadDate: "2025-02-03",
-      instructor: "Ms. Banda",
-      category: "science",
-      tags: ["biology", "cells", "organelles"]
-    },
-    {
-      id: "3",
-      title: "Chemical Bonding",
-      description: "Learn about different types of chemical bonds and their properties. This video covers ionic, covalent, and metallic bonds, as well as intermolecular forces and how they affect physical properties.",
-      thumbnail: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      duration: "22:10",
-      subject: "Chemistry",
-      grade: "Grade 12",
-      views: 1560,
-      rating: 4.9,
-      uploadDate: "2025-01-28",
-      instructor: "Dr. Mutale",
-      category: "science",
-      tags: ["chemistry", "bonding", "molecules"]
-    },
-    {
-      id: "4",
-      title: "Forces and Motion",
-      description: "Understand Newton's laws of motion and how forces affect objects. Learn about acceleration, momentum, and the relationship between force, mass, and motion in everyday situations.",
-      thumbnail: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      duration: "19:15",
-      subject: "Physics",
-      grade: "Grade 11",
-      views: 1120,
-      rating: 4.7,
-      uploadDate: "2025-02-10",
-      instructor: "Mr. Chanda",
-      category: "science",
-      tags: ["physics", "motion", "newton"]
-    },
-    {
-      id: "5",
-      title: "Essay Writing Techniques",
-      description: "Master the art of essay writing with these proven techniques. Learn how to structure your essays, develop strong arguments, and write compelling introductions and conclusions.",
-      thumbnail: "https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-      duration: "16:50",
-      subject: "English",
-      grade: "Grade 10",
-      views: 890,
-      rating: 4.5,
-      uploadDate: "2025-01-20",
-      instructor: "Mrs. Tembo",
-      category: "featured",
-      tags: ["english", "writing", "essays"]
-    },
-    {
-      id: "6",
-      title: "World War II: Causes and Effects",
-      description: "Analyze the causes, events, and lasting impacts of World War II. This comprehensive video covers the political climate before the war, major battles, and how the war shaped modern international relations.",
-      thumbnail: "https://images.unsplash.com/photo-1526817575615-7685a7295fc0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-      duration: "25:40",
-      subject: "History",
-      grade: "Grade 12",
-      views: 1350,
-      rating: 4.8,
-      uploadDate: "2025-02-05",
-      instructor: "Dr. Mumba",
-      category: "featured",
-      tags: ["history", "world war", "20th century"]
-    },
-    {
-      id: "7",
-      title: "Quadratic Equations and Functions",
-      description: "Learn how to solve quadratic equations and graph quadratic functions. This video covers factoring, completing the square, the quadratic formula, and interpreting parabolas.",
-      thumbnail: "https://images.unsplash.com/photo-1509228468518-180dd4864904?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-      duration: "23:15",
-      subject: "Mathematics",
-      grade: "Grade 11",
-      views: 1680,
-      rating: 4.9,
-      uploadDate: "2025-02-15",
-      instructor: "Mr. Mulenga",
-      category: "mathematics",
-      tags: ["quadratics", "functions", "algebra"]
-    },
-    {
-      id: "8",
-      title: "Introduction to Trigonometry",
-      description: "Learn the basics of trigonometry including sine, cosine, and tangent. This video introduces the unit circle, trigonometric ratios, and applications in solving real-world problems.",
-      thumbnail: "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-      duration: "20:45",
-      subject: "Mathematics",
-      grade: "Grade 12",
-      views: 2150,
-      rating: 4.7,
-      uploadDate: "2025-01-25",
-      instructor: "Ms. Phiri",
-      category: "mathematics",
-      tags: ["trigonometry", "sine", "cosine"]
-    },
-    {
-      id: "9",
-      title: "Ecosystem Dynamics",
-      description: "Understand the complex interactions within ecosystems and how they maintain balance. Learn about energy flow, nutrient cycling, succession, and how human activities affect ecosystems.",
-      thumbnail: "https://images.unsplash.com/photo-1500829243541-74b677fecc30?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-      duration: "24:30",
-      subject: "Biology",
-      grade: "Grade 12",
-      views: 1420,
-      rating: 4.8,
-      uploadDate: "2025-02-08",
-      instructor: "Dr. Banda",
-      category: "science",
-      tags: ["ecosystems", "ecology", "biology"]
-    },
-    {
-      id: "10",
-      title: "Electricity and Magnetism",
-      description: "Explore the relationship between electricity and magnetism and their applications. This video covers electric fields, magnetic fields, electromagnetic induction, and practical applications in technology.",
-      thumbnail: "https://images.unsplash.com/photo-1567427017947-545c5f96d209?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-      duration: "26:15",
-      subject: "Physics",
-      grade: "Grade 12",
-      views: 1890,
-      rating: 4.9,
-      uploadDate: "2025-01-30",
-      instructor: "Mr. Chanda",
-      category: "trending",
-      tags: ["physics", "electricity", "magnetism"]
+  // Fetch videos on mount
+  useEffect(() => {
+    const loadVideos = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch all videos initially. Filtering will happen client-side for now.
+        // Later, filters could be passed to fetchVideos if performance requires it.
+        const fetchedVideos = await fetchVideos(); 
+        setAllVideos(fetchedVideos);
+        setFilteredVideos(fetchedVideos); // Initialize filtered list
+      } catch (err) {
+        console.error("Error fetching videos:", err);
+        setError("Failed to load videos. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadVideos();
+  }, []); // Empty dependency array means run once on mount
+
+  // Filter videos whenever search, category, or subject changes
+  useEffect(() => {
+    let currentVideos = [...allVideos];
+
+    // Filter by search query
+    if (searchQuery) {
+      const lowerSearchQuery = searchQuery.toLowerCase();
+      currentVideos = currentVideos.filter(video => 
+        video.title.toLowerCase().includes(lowerSearchQuery) ||
+        (video.subject && video.subject.toLowerCase().includes(lowerSearchQuery)) ||
+        (video.topic && video.topic.toLowerCase().includes(lowerSearchQuery))
+        // Add video.description if it exists in the type and you want to search it
+      );
     }
-  ];
-  
-  // Filter videos based on search and category
-  const filteredVideos = videos.filter(video => {
-    const matchesSearch = searchQuery === "" || 
-      video.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.subject.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = activeCategory === null || 
-      activeCategory === "all" || 
-      video.category === activeCategory ||
-      (activeCategory === "science" && 
-        (video.subject === "Physics" || video.subject === "Chemistry" || video.subject === "Biology"));
-    
-    return matchesSearch && matchesCategory;
-  });
-  
-  // Get trending videos (most views)
-  const trendingVideos = [...videos]
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 4);
+
+    // Filter by selected subject
+    if (selectedSubject && selectedSubject !== "all") {
+      currentVideos = currentVideos.filter(video => 
+        video.subject?.toLowerCase() === selectedSubject.toLowerCase()
+      );
+    }
+
+    // Filter by active category button
+    // Note: This logic might need refinement depending on how categories map to data
+    if (activeCategory && activeCategory !== "all") {
+      if (activeCategory === "mathematics") {
+        currentVideos = currentVideos.filter(video => video.subject?.toLowerCase() === "mathematics");
+      } else if (activeCategory === "science") {
+        const scienceSubjects = ["physics", "chemistry", "biology"];
+        currentVideos = currentVideos.filter(video => 
+          scienceSubjects.includes(video.subject?.toLowerCase() ?? "")
+        );
+      } else if (activeCategory === "trending") {
+        // Placeholder: Implement actual trending logic (e.g., sort by views/date)
+        // For now, just show all matching other filters
+      } else if (activeCategory === "featured") {
+        // Placeholder: Implement actual featured logic (needs a flag in DB/data)
+        // For now, just show all matching other filters
+      }
+       // Add more category filters if needed
+    }
+
+    setFilteredVideos(currentVideos);
+
+  }, [searchQuery, activeCategory, selectedSubject, allVideos]);
   
   // Handle video selection
   const handleVideoSelect = (video: Video) => {
@@ -256,96 +142,12 @@ export default function VideoHub() {
     setSelectedVideo(video);
     
     // Find related videos
-    const related = videos.filter(v => 
+    const related = allVideos.filter(v => 
       v.id !== video.id && 
       (v.subject === video.subject || v.grade === video.grade)
     ).slice(0, 3);
     
     setRelatedVideos(related);
-    
-    // Add to recently watched
-    setRecentlyWatched(prev => {
-      // Remove if already exists
-      const filtered = prev.filter(v => v.id !== video.id);
-      // Add to beginning and limit to 4
-      return [video, ...filtered].slice(0, 4);
-    });
-  };
-  
-  // Video card component
-  const VideoCard = ({ video }: { video: Video }) => {
-    return (
-      <Card className="overflow-hidden transition-all hover:shadow-md h-full flex flex-col">
-        <div 
-          className="relative aspect-video cursor-pointer" 
-          onClick={() => handleVideoSelect(video)}
-        >
-          <img 
-            src={video.thumbnail} 
-            alt={video.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-            <div className="bg-skutopia-600/80 rounded-full p-3">
-              <Play className="h-6 w-6 text-white" />
-            </div>
-          </div>
-          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-            {video.duration}
-          </div>
-          {video.category === "featured" && (
-            <Badge className="absolute top-2 left-2 bg-skutopia-600">
-              Featured
-            </Badge>
-          )}
-        </div>
-        <div className="p-4 flex-grow flex flex-col">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {video.title}
-            </h3>
-            <div className="flex items-center">
-              <Star className="h-4 w-4 text-yellow-500 mr-1" />
-              <span className="text-sm font-medium">{video.rating}</span>
-            </div>
-          </div>
-          <div className="text-sm text-skutopia-600 mb-2">
-            {video.subject} • {video.grade}
-          </div>
-          <p className="text-sm text-gray-600 line-clamp-2 mb-3 flex-grow">
-            {video.description}
-          </p>
-          
-          <div className="flex flex-wrap gap-1 mb-3">
-            {video.tags.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs bg-gray-100 text-gray-700">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-          
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-            <div className="flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>{video.duration}</span>
-            </div>
-            <div className="flex items-center">
-              <span>{video.views.toLocaleString()} views</span>
-            </div>
-          </div>
-          
-          <Button 
-            className="w-full bg-skutopia-600 hover:bg-skutopia-700 text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleVideoSelect(video);
-            }}
-          >
-            Watch Video
-          </Button>
-        </div>
-      </Card>
-    );
   };
   
   return (
@@ -364,8 +166,8 @@ export default function VideoHub() {
             </Button>
             
             <VideoDetails 
-              video={selectedVideo}
-              relatedVideos={relatedVideos}
+              video={selectedVideo} 
+              relatedVideos={relatedVideos} 
               onBack={() => setSelectedVideo(null)}
               onVideoSelect={handleVideoSelect}
             />
@@ -385,23 +187,25 @@ export default function VideoHub() {
             
             {/* Search and Categories */}
             <div className="mb-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <div className="relative w-full max-w-md">
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                <div className="relative flex-grow w-full md:w-auto md:max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     type="text"
-                    placeholder="Search by title, description, or subject..."
+                    placeholder="Search videos..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2"
+                    className="pl-10 pr-4 py-2 w-full"
                   />
                 </div>
                 
-                <Select>
-                  <SelectTrigger className="w-[180px]">
+                {/* Subject Filter Dropdown */}
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="All Subjects" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* TODO: Populate dynamically using fetchDistinctSubjects */}
                     <SelectItem value="all">All Subjects</SelectItem>
                     <SelectItem value="mathematics">Mathematics</SelectItem>
                     <SelectItem value="physics">Physics</SelectItem>
@@ -413,85 +217,65 @@ export default function VideoHub() {
                 </Select>
               </div>
               
-              <div className="flex space-x-2 overflow-x-auto pb-1">
-                <Button
-                  variant="ghost"
-                  className={`flex items-center px-4 py-2 rounded-md ${
-                    activeCategory === "all" || activeCategory === null
-                      ? "text-skutopia-600 border-b-2 border-skutopia-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveCategory("all")}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  All Videos
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center px-4 py-2 rounded-md ${
-                    activeCategory === "trending"
-                      ? "text-skutopia-600 border-b-2 border-skutopia-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveCategory("trending")}
-                >
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Trending
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center px-4 py-2 rounded-md ${
-                    activeCategory === "mathematics"
-                      ? "text-skutopia-600 border-b-2 border-skutopia-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveCategory("mathematics")}
-                >
-                  <BookMarked className="h-4 w-4 mr-2" />
-                  Mathematics
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center px-4 py-2 rounded-md ${
-                    activeCategory === "science"
-                      ? "text-skutopia-600 border-b-2 border-skutopia-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveCategory("science")}
-                >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Science
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center px-4 py-2 rounded-md ${
-                    activeCategory === "featured"
-                      ? "text-skutopia-600 border-b-2 border-skutopia-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveCategory("featured")}
-                >
-                  <Award className="h-4 w-4 mr-2" />
-                  Featured
-                </Button>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-500">Showing {filteredVideos.length} videos</p>
-            </div>
-            
-            {/* Video Grid */}
-            {filteredVideos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredVideos.map(video => (
-                  <VideoCard key={video.id} video={video} />
+              {/* Category Buttons (Scrollable) */}
+              <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                {categories.map(category => (
+                    <Button
+                        key={category.id}
+                        variant="ghost"
+                        size="sm"
+                        className={`flex-shrink-0 items-center px-4 py-2 rounded-md ${activeCategory === category.id || (activeCategory === null && category.id === 'all')
+                            ? "bg-skutopia-100 text-skutopia-700 dark:bg-skutopia-900 dark:text-skutopia-300 font-medium"
+                            : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                        }`}
+                        onClick={() => setActiveCategory(category.id)}
+                    >
+                        {category.icon} 
+                        <span className="ml-2">{category.name}</span>
+                    </Button>
                 ))}
               </div>
-            ) : (
+            </div>
+            
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-skutopia-600" />
+                <p className="ml-2 text-gray-600 dark:text-gray-400">Loading videos...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {!loading && error && (
+              <div className="text-center py-12 text-red-600 dark:text-red-400">
+                <p>{error}</p>
+                {/* Optionally add a retry button */}
+              </div>
+            )}
+
+            {/* Video Grid / No Results */}
+            {!loading && !error && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Showing {filteredVideos.length} videos</p>
+              </div>
+            )}
+
+            {!loading && !error && filteredVideos.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredVideos.map(video => (
+                  <VideoCard 
+                    key={video.id} 
+                    video={video} 
+                    onVideoSelect={handleVideoSelect}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && filteredVideos.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">
-                  No videos match your search criteria. Try adjusting your filters.
+                  No videos found matching your criteria.
                 </p>
               </div>
             )}

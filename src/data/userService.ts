@@ -119,3 +119,28 @@ export async function updateTheme(userId: string, theme: 'light' | 'dark'): Prom
     }
     console.log(`User theme updated to ${theme}`);
 }
+
+// --- Delete User Account (Invokes Edge Function) ---
+export const deleteCurrentUserAccount = async (): Promise<void> => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+        throw new Error(sessionError?.message || "User is not authenticated.");
+    }
+
+    // Invoke the Edge Function
+    const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        // No body needed as function gets user from session
+    });
+
+    if (error) {
+        console.error("Edge function invocation error:", error);
+        throw new Error(`Failed to delete account: ${error.message}`);
+    }
+
+    if (data && !data.success) {
+        console.error("Edge function returned error:", data.error);
+        throw new Error(data.error || "Failed to delete account from backend.");
+    }
+
+    console.log("Account deletion function invoked successfully.");
+};

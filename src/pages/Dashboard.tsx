@@ -65,20 +65,25 @@ const Dashboard = () => {
 
   if (loading) return <p className="p-6 text-center">Loading dashboard...</p>;
   if (error) return <p className="p-6 text-center text-red-600">Error: {error}</p>;
-  if (!dashboardData) return <p className="p-6 text-center">No dashboard data found.</p>;
+  if (!dashboardData || !user) return <p className="p-6 text-center">No dashboard data or user found.</p>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
       {/* Header Section */}
       <div className="mb-8 p-4 bg-white shadow rounded-lg flex items-center space-x-4">
         <img
-          src={dashboardData.user.avatar_url || '/default-avatar.png'} 
-          alt={`${dashboardData.user.name}'s Avatar`}
-          className="w-16 h-16 rounded-full border-2 border-blue-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.png'; }}
+          key={user.avatarUrl} 
+          src={user.avatarUrl || '/default-avatar.png'} 
+          alt={`${user.name}'s Avatar`}
+          className="w-16 h-16 rounded-full border-2 border-blue-500 object-cover"
+          onError={(e) => { 
+            if ((e.target as HTMLImageElement).src !== '/default-avatar.png') {
+                (e.target as HTMLImageElement).src = '/default-avatar.png'; 
+            }
+          }}
         />
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Welcome back, {dashboardData.user.name}! 👋</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Welcome back, {user.name}! 👋</h1>
           <p className="text-gray-600">Let's continue your learning journey.</p>
         </div>
       </div>
