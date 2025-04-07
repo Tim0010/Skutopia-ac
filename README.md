@@ -1,69 +1,75 @@
-# Welcome to your Lovable project
+# Skutopia Academy
 
-## Project info
+An innovative educational platform designed to provide quality education and learning resources for students.
 
-**URL**: https://lovable.dev/projects/39471393-d096-4550-9ccb-c3e1dd3b133f
+## About Skutopia Academy
 
-## How can I edit this code?
+Skutopia Academy is a modern, interactive learning platform that offers:
+- Comprehensive educational resources
+- Interactive learning modules
+- Progress tracking and analytics
+- Community features for collaboration
+- Secure authentication and user management
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- User Authentication & Authorization
+- Interactive Learning Modules
+- Progress Tracking
+- Resource Management
+- Community Features
+- Responsive Design
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/39471393-d096-4550-9ccb-c3e1dd3b133f) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+This project is built with modern technologies:
 
-**Use your preferred IDE**
+- **Frontend**
+  - React
+  - TypeScript
+  - Vite
+  - Tailwind CSS
+  - shadcn-ui
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Backend**
+  - Supabase
+  - Deno Functions
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Getting Started
 
-Follow these steps:
+### Prerequisites
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Node.js (Recommended: latest LTS version)
+- npm or yarn
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Installation
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. Clone the repository
+```bash
+git clone https://github.com/Tim0010/skutopia-academy.git
+cd skutopia-academy
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+2. Install dependencies
+```bash
+npm install
+```
+
+3. Copy `.env.example` to `.env` and configure your environment variables
+
+4. Start the development server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Deployment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The application is deployed using Supabase and can be accessed through the provided URL.
 
-**Use GitHub Codespaces**
+## Contributing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## What technologies are used for this project?
+## License
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/39471393-d096-4550-9ccb-c3e1dd3b133f) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is licensed under the MIT License - see the LICENSE file for details.
