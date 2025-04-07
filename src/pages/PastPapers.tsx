@@ -1,9 +1,8 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Search } from "lucide-react";
+import { Download, FileText, Search, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,107 +11,146 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabaseClient";
 
-// Sample past papers data
+// Define PastPaper interface
+export interface PastPaper {
+  id: string; // UUID
+  title: string;
+  subject: string;
+  year: number;
+  grade: number | null; // Or string if needed
+  file_path: string; // Relative path in storage
+  file_size_kb: number | null; // Optional file size
+  created_at: string;
+}
+
+/* // Commenting out Sample past papers data
 const pastPapersData = [
-  {
-    id: "pp1",
-    title: "Mathematics Paper 1",
-    subject: "Mathematics",
-    year: "2023",
-    level: "Advanced",
-    fileSize: "2.4 MB",
-    downloadUrl: "/files/math-paper-2023.pdf",
-  },
-  {
-    id: "pp2",
-    title: "Physics Final Exam",
-    subject: "Physics",
-    year: "2023",
-    level: "Advanced",
-    fileSize: "3.1 MB",
-    downloadUrl: "/files/physics-final-2023.pdf",
-  },
-  {
-    id: "pp3",
-    title: "Chemistry Mid-term",
-    subject: "Chemistry",
-    year: "2022",
-    level: "Intermediate",
-    fileSize: "1.8 MB",
-    downloadUrl: "/files/chemistry-midterm-2022.pdf",
-  },
-  {
-    id: "pp4",
-    title: "Biology Entrance Exam",
-    subject: "Biology",
-    year: "2022",
-    level: "Basic",
-    fileSize: "2.2 MB",
-    downloadUrl: "/files/biology-entrance-2022.pdf",
-  },
-  {
-    id: "pp5",
-    title: "History Final Paper",
-    subject: "History",
-    year: "2021",
-    level: "Advanced",
-    fileSize: "3.5 MB",
-    downloadUrl: "/files/history-final-2021.pdf",
-  },
-  {
-    id: "pp6",
-    title: "Geography Mid-term",
-    subject: "Geography",
-    year: "2021",
-    level: "Intermediate",
-    fileSize: "1.9 MB",
-    downloadUrl: "/files/geography-midterm-2021.pdf",
-  },
-  {
-    id: "pp7",
-    title: "English Literature",
-    subject: "English",
-    year: "2020",
-    level: "Advanced",
-    fileSize: "2.7 MB",
-    downloadUrl: "/files/english-lit-2020.pdf",
-  },
-  {
-    id: "pp8",
-    title: "Computer Science Fundamentals",
-    subject: "Computer Science",
-    year: "2020",
-    level: "Basic",
-    fileSize: "1.5 MB",
-    downloadUrl: "/files/cs-fundamentals-2020.pdf",
-  },
+ // ... all sample data ...
 ];
-
-const subjects = ["All Subjects", "Mathematics", "Physics", "Chemistry", "Biology", "History", "Geography", "English", "Computer Science"];
-const years = ["All Years", "2023", "2022", "2021", "2020"];
-const levels = ["All Levels", "Basic", "Intermediate", "Advanced"];
+*/
 
 const PastPapers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All Subjects");
   const [selectedYear, setSelectedYear] = useState("All Years");
-  const [selectedLevel, setSelectedLevel] = useState("All Levels");
+  const [selectedGrade, setSelectedGrade] = useState("All Grades");
+
+  // State for fetched papers, loading, and errors
+  const [papers, setPapers] = useState<PastPaper[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // State for filter options
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [availableGrades, setAvailableGrades] = useState<string[]>([]);
+  const [loadingFilters, setLoadingFilters] = useState<boolean>(true);
+
+  // Fetch distinct filter values on mount
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      setLoadingFilters(true);
+      try {
+        // Assuming 'subject', 'year', 'grade' are column names in 'past_papers'
+        const [subjectsRes, yearsRes, gradesRes] = await Promise.all([
+          supabase.from('past_papers').select('subject', { count: 'exact', head: false }),
+          supabase.from('past_papers').select('year', { count: 'exact', head: false }),
+          supabase.from('past_papers').select('grade', { count: 'exact', head: false })
+        ]);
+
+        if (subjectsRes.error) throw subjectsRes.error;
+        if (yearsRes.error) throw yearsRes.error;
+        if (gradesRes.error) throw gradesRes.error;
+
+        // Extract unique, sorted values
+        const uniqueSubjects = [...new Set(subjectsRes.data?.map((item: any) => item.subject).filter(Boolean))].sort();
+        const uniqueYears = [...new Set(yearsRes.data?.map((item: any) => item.year).filter(Boolean))].sort((a, b) => b - a); // Sort descending
+        const uniqueGrades = [...new Set(gradesRes.data?.map((item: any) => item.grade).filter(Boolean))].sort((a, b) => a - b); // Sort ascending
+
+        setAvailableSubjects(uniqueSubjects as string[]);
+        setAvailableYears(uniqueYears.map(String)); // Convert years to strings for Select
+        setAvailableGrades(uniqueGrades.map(String)); // Convert grades to strings for Select
+
+      } catch (err: any) {
+        console.error("Error fetching filter options:", err);
+        // Handle error - maybe show a toast or message
+      } finally {
+        setLoadingFilters(false);
+      }
+    };
+    fetchFilterOptions();
+  }, []);
+
+  // Fetch papers based on filters
+  useEffect(() => {
+    const fetchPapers = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        let query = supabase.from('past_papers').select('*'); // Assuming table name is 'past_papers'
+
+        // Apply filters - TODO: Adjust based on actual filter values/database columns
+        if (selectedSubject !== "All Subjects") {
+          query = query.eq('subject', selectedSubject);
+        }
+        if (selectedYear !== "All Years") {
+          query = query.eq('year', parseInt(selectedYear));
+        }
+        if (selectedGrade !== "All Grades") {
+          query = query.eq('grade', parseInt(selectedGrade)); // Assuming grade is numeric
+        }
+        if (searchTerm) {
+          query = query.ilike('title', `%${searchTerm}%`);
+        }
+
+        const { data, error: fetchError } = await query.order('year', { ascending: false }).order('title');
+
+        if (fetchError) throw fetchError;
+        setPapers(data || []);
+      } catch (err: any) {
+        console.error("Error fetching past papers:", err);
+        setError("Failed to load past papers. Please try again.");
+        setPapers([]); // Clear papers on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPapers();
+  }, [searchTerm, selectedSubject, selectedYear, selectedGrade]);
+
+  // Implement download functionality
+  const handleDownload = async (filePath: string) => {
+    if (!filePath) return;
+    try {
+      // Replace 'past-papers-bucket' with your actual bucket name
+      const bucketName = 'past_papers'; // <<<--- CHANGE THIS TO YOUR BUCKET NAME
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, 60 * 5); // Signed URL valid for 5 minutes
+
+      if (error) throw error;
+
+      if (data?.signedUrl) {
+        // Open in new tab to trigger download (browser behaviour may vary)
+        window.open(data.signedUrl, '_blank');
+      } else {
+        console.error("Failed to get signed URL, no data returned.");
+        // TODO: Show user feedback (e.g., toast)
+      }
+
+    } catch (err: any) {
+      console.error("Error creating signed URL:", err);
+      // TODO: Show user feedback (e.g., toast)
+    }
+  };
 
   // Filter papers based on search term and filters
-  const filteredPapers = pastPapersData.filter((paper) => {
-    // Search term matching
-    const matchesSearch = 
-      paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      paper.subject.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // Filter matching
-    const matchesSubject = selectedSubject === "All Subjects" || paper.subject === selectedSubject;
-    const matchesYear = selectedYear === "All Years" || paper.year === selectedYear;
-    const matchesLevel = selectedLevel === "All Levels" || paper.level === selectedLevel;
-
-    return matchesSearch && matchesSubject && matchesYear && matchesLevel;
-  });
+  // This filtering is now done in the useEffect query
+  // const filteredPapers = papers; // Use 'papers' state directly
 
   return (
     <div className="space-y-6">
@@ -141,12 +179,14 @@ const PastPapers = () => {
             <Select
               value={selectedSubject}
               onValueChange={setSelectedSubject}
+              disabled={loadingFilters}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Subject" />
               </SelectTrigger>
               <SelectContent>
-                {subjects.map((subject) => (
+                <SelectItem value="All Subjects">All Subjects</SelectItem>
+                {availableSubjects.map((subject) => (
                   <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                 ))}
               </SelectContent>
@@ -155,27 +195,31 @@ const PastPapers = () => {
             <Select
               value={selectedYear}
               onValueChange={setSelectedYear}
+              disabled={loadingFilters}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
-                {years.map((year) => (
+                <SelectItem value="All Years">All Years</SelectItem>
+                {availableYears.map((year) => (
                   <SelectItem key={year} value={year}>{year}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             <Select
-              value={selectedLevel}
-              onValueChange={setSelectedLevel}
+              value={selectedGrade}
+              onValueChange={setSelectedGrade}
+              disabled={loadingFilters}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Level" />
+                <SelectValue placeholder="Grade" />
               </SelectTrigger>
               <SelectContent>
-                {levels.map((level) => (
-                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                <SelectItem value="All Grades">All Grades</SelectItem>
+                {availableGrades.map((grade) => (
+                  <SelectItem key={grade} value={grade}>{grade}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -183,10 +227,25 @@ const PastPapers = () => {
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-muted-foreground">Loading papers...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="text-center py-10 text-red-600">
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* Papers grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredPapers.length > 0 ? (
-          filteredPapers.map((paper) => (
+        {!loading && !error && papers.length > 0 ? (
+          papers.map((paper) => (
             <Card key={paper.id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -199,22 +258,24 @@ const PastPapers = () => {
                       <Badge variant="outline" className="bg-gray-50">
                         {paper.year}
                       </Badge>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                        {paper.level}
-                      </Badge>
+                      {/* Assuming grade exists */}
+                      {paper.grade && <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                        Grade {paper.grade}
+                      </Badge>}
                     </div>
                   </div>
-                  <div className="bg-skutopia-100 p-2 rounded-md">
-                    <FileText className="h-5 w-5 text-skutopia-600" />
+                  <div className="bg-green-100 p-2 rounded-md">
+                    <FileText className="h-5 w-5 text-green-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
-                    {paper.fileSize}
+                    {/* TODO: Format file size if needed */}
+                    {paper.file_size_kb ? `${(paper.file_size_kb / 1024).toFixed(1)} MB` : ''}
                   </span>
-                  <Button variant="outline" size="sm" className="gap-1">
+                  <Button size="sm" className="gap-1 bg-transparent border border-green-600 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => handleDownload(paper.file_path)}>
                     <Download className="h-4 w-4" />
                     Download
                   </Button>
@@ -223,13 +284,16 @@ const PastPapers = () => {
             </Card>
           ))
         ) : (
-          <div className="col-span-full text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
-            <h3 className="mt-2 text-lg font-medium">No papers found</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try adjusting your search or filters to find what you're looking for.
-            </p>
-          </div>
+          // Display message only if not loading and no error
+          !loading && !error && (
+            <div className="col-span-full text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+              <h3 className="mt-2 text-lg font-medium">No papers found</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try adjusting your search or filters, or check back later.
+              </p>
+            </div>
+          )
         )}
       </div>
     </div>

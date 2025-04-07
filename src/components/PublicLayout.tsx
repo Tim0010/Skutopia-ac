@@ -19,7 +19,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 flex flex-col">
       {/* Navigation - Modern, sleek design with mobile responsiveness */}
-      <motion.nav 
+      <motion.nav
         className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -37,7 +37,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
                 </Link>
               </motion.div>
             </div>
-            
+
             {/* Desktop navigation */}
             <div className="hidden md:flex items-center space-x-4">
               {isAuthenticated ? (
@@ -61,7 +61,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
                 </>
               )}
             </div>
-            
+
             {/* Mobile menu button */}
             <div className="flex md:hidden items-center">
               <button
@@ -81,7 +81,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
         {/* Mobile menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div 
+            <motion.div
               className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -114,7 +114,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
         {title && (
           <div className="bg-gradient-to-r from-skutopia-50 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950 py-12 sm:py-16 border-b border-gray-100 dark:border-gray-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -123,7 +123,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
                 {title}
               </motion.h1>
               {subtitle && (
-                <motion.p 
+                <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
@@ -135,12 +135,12 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
             </div>
           </div>
         )}
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           {children}
         </div>
       </main>
-      
+
       {/* Footer */}
       <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -220,7 +220,7 @@ const PublicLayout = ({ children, title, subtitle }: PublicLayoutProps) => {
 
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
             <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-              Copyright &copy; {new Date().getFullYear()} Mentorly Academia
+              Copyright &copy; {new Date().getFullYear()} Skutopia Academy
             </p>
           </div>
         </div>

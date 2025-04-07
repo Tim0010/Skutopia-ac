@@ -2,7 +2,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { fetchDashboardData } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BrainCircuit, SendHorizontal, Loader2, Activity, Award, Video, BookOpen, FileText, Pencil, Users } from "lucide-react";
@@ -228,50 +227,41 @@ const MuzangaChat = () => {
   };
 
   return (
-    <Card className="flex flex-col h-[500px] shadow-lg rounded-lg">
+    <Card className="flex flex-col shadow-lg rounded-lg">
       <CardHeader className="border-b dark:border-gray-700">
         <CardTitle className="flex items-center text-xl font-semibold text-gray-700 dark:text-white">
           <BrainCircuit className="h-6 w-6 mr-2 text-skutopia-600" /> Muzanga AI Assistant
         </CardTitle>
         <CardDescription>Your friendly mentor for education and guidance.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow p-0 overflow-hidden">
-        <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
-          {historyLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-              <p className="ml-2 text-gray-500">Loading chat history...</p>
+      <CardContent className="flex-grow p-4 overflow-hidden">
+        <div className="space-y-4">
+          {messages.map((msg, i) => (
+            <div
+              key={`${msg.id || i}-chat`}
+              className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+            >
+              <div
+                className={`relative max-w-[75%] rounded-lg px-3 py-2 text-sm ${msg.role === "user"
+                  ? "bg-skutopia-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-700 dark:text-gray-200"}`
+                }
+              >
+                {msg.content}
+                <span className="text-xs opacity-70 ml-2 pt-1 float-right clear-both">
+                  {formatTime(msg.timestamp)}
+                </span>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map((msg, i) => (
-                <div
-                  key={`${msg.id || i}`}
-                  className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`relative max-w-[75%] rounded-lg px-3 py-2 text-sm ${msg.role === "user"
-                      ? "bg-skutopia-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 dark:text-gray-200"}`
-                    }
-                  >
-                    {msg.content}
-                    <span className="text-xs opacity-70 ml-2 pt-1 float-right clear-both">
-                      {formatTime(msg.timestamp)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="max-w-[75%] rounded-lg px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 dark:text-gray-200 flex items-center">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Thinking...
-                  </div>
-                </div>
-              )}
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="max-w-[75%] rounded-lg px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 dark:text-gray-200 flex items-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Thinking...
+              </div>
             </div>
           )}
-        </ScrollArea>
+        </div>
       </CardContent>
       <CardFooter className="border-t dark:border-gray-700 p-4">
         <div className="flex w-full items-center space-x-2">
@@ -283,7 +273,12 @@ const MuzangaChat = () => {
             disabled={loading || historyLoading}
             className="flex-1"
           />
-          <Button onClick={sendMessage} disabled={loading || historyLoading || !input.trim()} size="icon">
+          <Button
+            onClick={sendMessage}
+            disabled={loading || historyLoading || !input.trim()}
+            size="icon"
+            className="bg-skutopia-600 text-white hover:bg-skutopia-700 disabled:opacity-50 transition-colors"
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
             <span className="sr-only">Send</span>
           </Button>
@@ -327,9 +322,31 @@ const Dashboard = () => {
       });
   }, [user]);
 
-  if (loading) return <p className="p-6 text-center">Loading dashboard...</p>;
-  if (error) return <p className="p-6 text-center text-red-600">Error: {error}</p>;
-  if (!dashboardData) return <p className="p-6 text-center">No dashboard data found.</p>;
+  // Use renamed state variables for loading/error checks
+  if (loadingData) return <p className="p-6 text-center">Loading dashboard data...</p>;
+  if (fetchError) return <p className="p-6 text-center text-red-600">Error loading dashboard: {fetchError}</p>;
+  // Keep the user check
+  if (!user) return <p className="p-6 text-center">User not found.</p>;
+  // Remove or adjust the dashboardData check if the component should render partially
+  // if (!dashboardData) return <p className="p-6 text-center">No specific dashboard data found, but chat is available.</p>; 
+
+  // --- Re-add Helper to get icon based on activity type --- 
+  const getActivityIcon = (type: ActivityItem['type']) => {
+    switch (type) {
+      case 'quiz_start':
+      case 'quiz_complete':
+        return <Award size={18} className="mr-3 text-blue-500" />;
+      case 'video_watch':
+        return <Video size={18} className="mr-3 text-red-500" />;
+      case 'flashcard_session':
+        return <BookOpen size={18} className="mr-3 text-green-500" />;
+      case 'material_view':
+        return <FileText size={18} className="mr-3 text-purple-500" />;
+      default:
+        return <Activity size={18} className="mr-3 text-gray-500" />;
+    }
+  };
+  // --- End Helper --- 
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-950 min-h-screen font-sans">
@@ -365,7 +382,7 @@ const Dashboard = () => {
 
         {/* Right Column (Sessions & Quick Actions) */}
         <div className="space-y-6">
-          {/* --- Recent Activities Card (Corrected JSX Structure) --- */}
+          {/* --- Recent Activities Card (Updated Content) --- */}
           <Card className="shadow-lg rounded-lg dark:bg-gray-800/50 border dark:border-gray-700/50">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-gray-700 dark:text-white flex items-center">
@@ -373,39 +390,37 @@ const Dashboard = () => {
                 Recent Activities
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="max-h-60 pr-2">
-                <div className="space-y-3">
-                  {dashboardData?.recentActivities && dashboardData.recentActivities.length > 0 ? (
-                    dashboardData.recentActivities.map((activity) => (
-                      <div key={activity.id} className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm border-l-4 border-gray-300 dark:border-gray-600">
-                        {getActivityIcon(activity.type)}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{activity.description}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(activity.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                          </p>
-                          {activity.link && (
-                            <Link to={activity.link} className="text-xs text-skutopia-600 hover:underline dark:text-skutopia-400">
-                              View Details
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-6 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <span className="text-3xl">📊</span>
-                        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">No Recent Activity Yet</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
-                          Start learning by taking quizzes, watching videos, or using flashcards to see your activities here.
+            <CardContent className="p-4">
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {dashboardData?.recentActivities && dashboardData.recentActivities.length > 0 ? (
+                  dashboardData.recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm border-l-4 border-gray-300 dark:border-gray-600">
+                      {getActivityIcon(activity.type)}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{activity.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(activity.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                         </p>
+                        {activity.link && (
+                          <Link to={activity.link} className="text-xs text-skutopia-600 hover:underline dark:text-skutopia-400">
+                            View Details
+                          </Link>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
+                  ))
+                ) : (
+                  <div className="py-6 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <span className="text-3xl">📊</span>
+                      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">No Recent Activity Yet</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                        Start learning by taking quizzes, watching videos, or using flashcards to see your activities here.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 

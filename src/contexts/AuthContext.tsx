@@ -17,7 +17,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  refreshUserProfile: () => Promise<void>; // Add refresh function
+  refreshUserProfile: () => Promise<void>;
+  signInWithGoogle: () => Promise<boolean>;
+  signInWithFacebook: () => Promise<boolean>;
   isAuthenticated: boolean;
   isAdmin: boolean;
   session: Session | null;
@@ -73,7 +75,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.id);
         setSession(newSession);
-        
+
         if (newSession?.user) {
           // Fetch user profile data including role
           fetchUserProfile(newSession.user);
@@ -87,11 +89,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initializeAuth = async () => {
       const { data: { session: initialSession } } = await supabase.auth.getSession();
       setSession(initialSession);
-      
+
       if (initialSession?.user) {
         await fetchUserProfile(initialSession.user);
       }
-      
+
       setLoading(false);
     };
 
@@ -101,7 +103,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []);
-  
+
   const fetchUserProfile = async (authUser: User) => {
     try {
       // First, try to get profile from Supabase
@@ -110,12 +112,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .select('*')
         .eq('id', authUser.id)
         .single();
-      
+
       if (error) {
         console.error("Error fetching user profile:", error);
         throw error;
       }
-      
+
       if (profile) {
         setUser({
           id: profile.id,
@@ -124,7 +126,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: profile.role as "student" | "mentor" | "admin",
           avatarUrl: profile.avatar_url
         });
-        
+
         console.log("User profile loaded from database:", profile.role);
         return;
       }
@@ -132,7 +134,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Profile fetch error:", error);
       // Fall back to mock data in case of error
     }
-    
+
     // Fallback for development - use mock data if needed
     const mockUser = MOCK_USERS.find(u => u.email === authUser.email);
     if (mockUser) {
@@ -163,14 +165,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email,
         password
       });
-      
+
       if (error) {
         console.error("Supabase login error:", error.message);
         setLoading(false);
         toast.error(`Login failed: ${error.message}`);
         return false;
       }
-      
+
       // Login successful with Supabase
       console.log("Supabase login successful:", data.user?.email);
       // User profile will be fetched by onAuthStateChange listener
@@ -192,12 +194,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .select('role')
         .eq('id', userId)
         .single();
-        
+
       if (error) {
         console.error("Error getting user role:", error);
         return null;
       }
-      
+
       return data?.role || null;
     } catch (error) {
       console.error("Get user role error:", error);
@@ -207,7 +209,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
     setLoading(true);
-    
+
     try {
       // Register with Supabase
       const { data, error } = await supabase.auth.signUp({
@@ -221,14 +223,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       });
-      
+
       if (error) {
         toast.error(error.message || "An error occurred during signup");
         console.error("Signup error:", error);
         setLoading(false);
         return false;
       }
-      
+
       // Successful signup
       toast.success("Account created successfully!");
       setLoading(false);
@@ -260,6 +262,52 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const signInWithGoogle = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) {
+        console.error("Google login error:", error.message);
+        toast.error(`Google login failed: ${error.message}`);
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      toast.error("Failed to sign in with Google");
+      return false;
+    }
+  };
+
+  const signInWithFacebook = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) {
+        console.error("Facebook login error:", error.message);
+        toast.error(`Facebook login failed: ${error.message}`);
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Facebook login error:", error);
+      toast.error("Failed to sign in with Facebook");
+      return false;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -267,6 +315,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signup,
     logout,
     refreshUserProfile,
+    signInWithGoogle,
+    signInWithFacebook,
     isAuthenticated: !!session,
     isAdmin: user?.role === "admin",
     session

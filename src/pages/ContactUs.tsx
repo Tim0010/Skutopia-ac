@@ -5,13 +5,15 @@ import PublicLayout from "@/components/PublicLayout";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner"; // Assuming you have a toast notification library like sonner
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabaseClient"; // Import supabase client
 
 interface IFormInput {
   name: string;
   email: string;
   subject: string;
   message: string;
+  phoneNumber: string; // Removed optional marker (?)
 }
 
 export default function ContactUs() {
@@ -23,29 +25,36 @@ export default function ContactUs() {
   } = useForm<IFormInput>();
 
   const onSubmit: SubmitHandler<IFormInput> = async (data) => {
-    // --- Placeholder for API submission ---
-    console.log("Form data:", data);
-    // Replace this with your actual API call
-    // Example:
-    // try {
-    //   const response = await fetch('/api/contact', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(data),
-    //   });
-    //   if (!response.ok) throw new Error('Network response was not ok.');
-    //   toast.success("Message sent successfully!");
-    //   reset(); // Reset form on success
-    // } catch (error) {
-    //   console.error('Submission error:', error);
-    //   toast.error("Failed to send message. Please try again.");
-    // }
+    try {
+      // Insert data into Supabase table
+      const { error: insertError } = await supabase
+        .from('contact_submissions') // Use the table name you created
+        .insert([
+          {
+            name: data.name,
+            email: data.email,
+            subject: data.subject || null, // Send null if subject is empty
+            message: data.message,
+            phone_number: data.phoneNumber // No longer needs || null if required
+          }
+        ]);
 
-    // Simulate network delay for demonstration
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast.success("Message sent successfully! (Simulated)");
-    reset();
-    // --- End Placeholder ---
+      if (insertError) {
+        // Throw the error to be caught by the catch block
+        throw insertError;
+      }
+
+      // Success: Show toast and reset form
+      toast.success("Message received! We'll get back to you soon.");
+      reset();
+
+    } catch (error: any) {
+      // Error: Show error toast
+      console.error('Submission error:', error);
+      toast.error(`Failed to send message: ${error.message || "Please try again."}`);
+    }
+    // Note: isSubmitting state is handled automatically by react-hook-form
+    // when the async onSubmit function resolves or rejects.
   };
 
   return (
@@ -63,19 +72,6 @@ export default function ContactUs() {
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Get in Touch</h2>
 
           <div className="space-y-6 mb-8">
-            {/* Email */}
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 bg-skutopia-100 dark:bg-skutopia-900/30 p-3 rounded-full">
-                <Mail className="h-6 w-6 text-skutopia-600 dark:text-skutopia-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email</h3>
-                <a href="mailto:contact@skutopia-academia.com" className="text-gray-600 dark:text-gray-400 hover:text-skutopia-600 dark:hover:text-skutopia-400 transition-colors break-all">
-                  contact@skutopia-academia.com
-                </a>
-              </div>
-            </div>
-
             {/* Phone */}
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0 bg-skutopia-100 dark:bg-skutopia-900/30 p-3 rounded-full">
@@ -165,6 +161,22 @@ export default function ContactUs() {
                 className={errors.email ? "border-red-500" : ""}
               />
               {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+            </div>
+
+            {/* Phone Number Field (Updated) */}
+            <div>
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                placeholder="+260 9XXXXXXXX"
+                {...register("phoneNumber", { required: "Phone number is required" })}
+                aria-invalid={errors.phoneNumber ? "true" : "false"}
+                className={errors.phoneNumber ? "border-red-500" : ""}
+              />
+              {errors.phoneNumber && <p className="mt-1 text-xs text-red-500">{errors.phoneNumber.message}</p>}
             </div>
 
             {/* Subject Field */}

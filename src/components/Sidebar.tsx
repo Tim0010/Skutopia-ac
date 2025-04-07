@@ -1,5 +1,4 @@
-
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -14,12 +13,15 @@ import {
   LayoutDashboard,
   FileText,
   Award,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
+import { toast } from "sonner";
 
 const Sidebar = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
@@ -28,8 +30,19 @@ const Sidebar = () => {
     { name: "Flashcards", icon: <BookOpen size={20} />, path: "/flashcards" },
     { name: "Quizzes", icon: <Megaphone size={20} />, path: "/quizzes" },
     { name: "Past Papers", icon: <FileText size={20} />, path: "/pastpapers" },
-    { name: "Scholarships", icon: <Award size={20} />, path: "/scholarships" }
+    { name: "Scholarships", icon: <Award size={20} />, path: "/scholarships" },
+    { name: "Homepage", icon: <Home size={20} />, path: "/" }
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error("Logout failed. Please try again.");
+    }
+  };
 
   return (
     <div className="hidden md:flex md:w-64 md:flex-col h-screen">
@@ -58,24 +71,37 @@ const Sidebar = () => {
             ))}
           </nav>
 
-          <div className="px-4 mt-6">
-            <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <GraduationCap className="h-8 w-8 text-skutopia-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Need help?
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Contact student support
-                  </p>
+          <div className="px-4 mt-auto mb-4">
+            <NavLink to="/contact-us" className="block hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors duration-150 mb-4">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
+                <div className="flex items-center">
+                  <GraduationCap className="h-8 w-8 text-skutopia-500" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Need help?
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Visit our contact page.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 w-full text-center pointer-events-none">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <HelpCircle size={16} className="mr-1" />
+                    Get Support
+                  </Button>
                 </div>
               </div>
-              <Button variant="link" size="sm" className="mt-2 w-full">
-                <HelpCircle size={16} className="mr-1" />
-                Get Support
-              </Button>
-            </div>
+            </NavLink>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 dark:text-red-500 dark:hover:text-red-400"
+              onClick={handleLogout}
+            >
+              <LogOut size={16} className="mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>

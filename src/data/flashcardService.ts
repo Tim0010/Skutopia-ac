@@ -1,15 +1,49 @@
 import { supabase } from '@/lib/supabaseClient';
 
-export interface FlashcardData {
-  id: string; // UUID from Supabase
-  grade: string;
-  subject: string;
-  topic: string;
-  question: string;
-  answer: string;
+// --- New Interfaces based on Schema ---
+
+export interface Subject {
+  id: string; // UUID
+  name: string;
 }
 
-// Interface for the detailed progress data returned by the function
+export interface Topic {
+  id: string; // UUID
+  subject_id: string;
+  name: string;
+  subject?: Subject; // Optional: For including subject name in fetches
+}
+
+export interface Tag {
+  id: string; // UUID
+  name: string;
+}
+
+export interface FlashcardData { // Renamed from Flashcard for clarity
+  id: string; // UUID
+  topic_id: string;
+  grade: number | null; // Allow null if grade is optional or not set
+  question: string;
+  answer: string;
+  difficulty_level: 'easy' | 'medium' | 'hard' | null; // Allow null
+  created_at: string;
+  updated_at: string;
+  // Optional relations fetched via joins or separate queries
+  topic?: Topic;
+  tags?: Tag[];
+}
+
+// Interface for filtering flashcards
+export interface FlashcardFilters {
+  subjectId?: string;
+  topicId?: string;
+  grade?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  tagIds?: string[]; // Filter by one or more tag IDs
+  searchTerm?: string; // For searching question/answer text
+}
+
+// Keep existing progress interface if that system remains unchanged
 export interface FlashcardProgressData {
   user_id: string;
   flashcard_id: string;
@@ -18,207 +52,282 @@ export interface FlashcardProgressData {
   correct_count: number;
   incorrect_count: number;
   level: number;
-  next_review_at?: string | null; // Can be null if not set
+  next_review_at?: string | null;
 }
 
+/* // Commenting out old mock data as it doesn't match the new schema and isn't used by functions
 // Mock Flashcard Data - Keep for reference or initial seeding if needed, but not used by functions
 const allFlashcards: FlashcardData[] = [
   // Grade 8 Math - Algebra
-  { id: "m8a1", grade: "8", subject: "Mathematics", topic: "Algebra", question: "Solve for x: 2x + 5 = 15", answer: "x = 5" },
-  { id: "m8a2", grade: "8", subject: "Mathematics", topic: "Algebra", question: "What is the slope of the line y = 3x - 2?", answer: "3" },
-  { id: "m8a3", grade: "8", subject: "Mathematics", topic: "Algebra", question: "Simplify: (x^2)(x^3)", answer: "x^5" },
-
-  // Grade 9 Science - Biology
-  { id: "s9b1", grade: "9", subject: "Science", topic: "Biology", question: "What is the powerhouse of the cell?", answer: "Mitochondria" },
-  { id: "s9b2", grade: "9", subject: "Science", topic: "Biology", question: "What is photosynthesis?", answer: "The process plants use to convert light energy into chemical energy (glucose)." },
-  { id: "s9b3", grade: "9", subject: "Science", topic: "Biology", question: "What are the four main types of tissues in the human body?", answer: "Epithelial, connective, muscle, and nervous tissue." },
-
-  // Grade 10 Chemistry
-  { id: "c10c1", grade: "10", subject: "Chemistry", topic: "Atomic Structure", question: "What are the three main subatomic particles?", answer: "Protons, neutrons, and electrons." },
-  { id: "c10c2", grade: "10", subject: "Chemistry", topic: "Atomic Structure", question: "What is the atomic number of an element?", answer: "The number of protons in the nucleus of an atom." },
-
-  // Grade 11 Physics - Kinematics
-  { id: "p11k1", grade: "11", subject: "Physics", topic: "Kinematics", question: "What is the formula for speed?", answer: "Speed = Distance / Time" },
-  { id: "p11k2", grade: "11", subject: "Physics", topic: "Kinematics", question: "What is acceleration?", answer: "The rate of change of velocity." },
-
-  // Grade 12 Mathematics - Calculus
-  { id: "m12c1", grade: "12", subject: "Mathematics", topic: "Calculus", question: "What is the derivative of x^2?", answer: "2x" },
-  { id: "m12c2", grade: "12", subject: "Mathematics", topic: "Calculus", question: "What does the integral of a function represent?", answer: "The area under the curve of the function." },
+  { id: "m8a1", topic_id: "some-topic-id", grade: 8, question: "Solve for x: 2x + 5 = 15", answer: "x = 5", difficulty_level: 'medium', created_at: '', updated_at: '' },
+  // ... Add more mock data conforming to new schema if needed for reference
 ];
+*/
 
-// --- Supabase API Calls ---
+// --- Supabase API Calls (Refactored) ---
 
-export async function fetchFlashcards(grade: string, subject: string, topic: string): Promise<FlashcardData[]> {
-  console.log("Fetching from Supabase with:", { grade, subject, topic }); // Debugging log
-  if (!grade || !subject || !topic) {
-    return []; // Return empty if any filter is missing
-  }
+// Fetch all Subjects
+export async function fetchSubjects(): Promise<Subject[]> {
   const { data, error } = await supabase
-    .from("flashcards")
-    .select("*")
-    .eq("grade", grade)
-    .eq("subject", subject)
-    .eq("topic", topic);
+    .from('subjects')
+    .select('id, name')
+    .order('name');
 
   if (error) {
-    console.error("Supabase fetch error:", error);
+    console.error("Error fetching subjects:", error);
     throw error;
   }
-  console.log("Supabase fetched data:", data);
   return data || [];
 }
 
-// Helper functions to get unique filter options - **Updated to query Supabase**
-export async function getAvailableGrades(): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from('flashcards')
-      .select('grade', { count: 'exact', head: false }); // Use select distinct workaround
+// Fetch Topics, optionally filtered by subject_id
+export async function fetchTopics(subjectId?: string): Promise<Topic[]> {
+  let query = supabase
+    .from('topics')
+    .select('id, name, subject_id') // Select required fields
+    .order('name');
 
-    if (error) {
-      console.error("Error fetching distinct grades:", error);
-      throw error;
-    }
-
-    // Extract unique grades - Supabase doesn't have a native distinct() yet for select
-    // We fetch all grades and filter unique ones client-side
-    const grades = data ? [...new Set(data.map((item: any) => item.grade))].sort() : [];
-    console.log("Available grades:", grades); // Debugging
-    const result: string[] = grades;
-    return result;
-  } catch (err) {
-    console.error("Failed to get grades:", err);
-    return [];
+  if (subjectId) {
+    query = query.eq('subject_id', subjectId);
   }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(`Error fetching topics (subjectId: ${subjectId}):`, error);
+    throw error;
+  }
+  return data || [];
 }
 
-export async function getAvailableSubjects(grade: string): Promise<string[]> {
-  if (!grade) return [];
-  try {
-    const { data, error } = await supabase
-      .from('flashcards')
-      .select('subject') // Select only subject
-      .eq('grade', grade);
+// Fetch all Tags
+export async function fetchTags(): Promise<Tag[]> {
+  const { data, error } = await supabase
+    .from('tags')
+    .select('id, name')
+    .order('name');
 
-    if (error) {
-      console.error(`Error fetching distinct subjects for grade ${grade}:`, error);
-      throw error;
-    }
-
-    // Extract unique subjects for the selected grade
-    const subjects = data ? [...new Set(data.map((item: any) => item.subject))].sort() : [];
-    console.log(`Available subjects for grade ${grade}:`, subjects); // Debugging
-    const result: string[] = subjects;
-    return result;
-  } catch (err) {
-    console.error(`Failed to get subjects for grade ${grade}:`, err);
-    return [];
+  if (error) {
+    console.error("Error fetching tags:", error);
+    throw error;
   }
+  return data || [];
 }
 
-export async function getAvailableTopics(grade: string, subject: string): Promise<string[]> {
-  if (!grade || !subject) return [];
-  try {
-    const { data, error } = await supabase
-      .from('flashcards')
-      .select('topic') // Select only topic
-      .eq('grade', grade)
-      .eq('subject', subject);
+// Fetch Flashcards based on filters
+export async function fetchFlashcards(filters: FlashcardFilters): Promise<FlashcardData[]> {
 
-    if (error) {
-      console.error(`Error fetching distinct topics for grade ${grade}, subject ${subject}:`, error);
-      throw error;
+  // --- Pre-fetch Topic IDs if filtering by Subject only ---
+  let topicIdsForSubject: string[] | undefined = undefined;
+  if (filters.subjectId && !filters.topicId) {
+    try {
+      const topics = await fetchTopics(filters.subjectId);
+      topicIdsForSubject = topics.map(t => t.id);
+      if (topicIdsForSubject.length === 0) {
+        // If subject has no topics, no flashcards can match
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching topics for subject filter:", error);
+      throw new Error("Failed to fetch topics for subject filter."); // Propagate error
+    }
+  }
+
+  // --- Build the Query ---
+  // Dynamically determine the select join for tags based on filtering
+  const selectTagsJoin = (filters.tagIds && filters.tagIds.length > 0)
+    ? `flashcard_tags!inner(tag:tags(id, name))` // Use INNER JOIN only when filtering tags
+    : `flashcard_tags(tag:tags(id, name))`;      // Use LEFT JOIN otherwise
+
+  let query = supabase
+    .from('flashcards')
+    .select(`
+            id, topic_id, grade, question, answer, difficulty_level, created_at, updated_at,
+            topic:topics!inner( id, name, subject_id, subject:subjects(id, name) ),
+            ${selectTagsJoin}
+        `)
+    // Add !inner to topic join ensure topic exists - adjust if flashcards can exist without topics
+    .order('random_seed');
+
+  // --- Apply Filters ---
+  if (filters.topicId) {
+    query = query.eq('topic_id', filters.topicId);
+  } else if (topicIdsForSubject) {
+    // Apply filter using the fetched topic IDs for the selected subject
+    query = query.in('topic_id', topicIdsForSubject);
+  }
+  // Removed the direct filter on topics.subject_id
+
+  if (filters.grade) {
+    query = query.eq('grade', filters.grade);
+  }
+
+  if (filters.difficulty) {
+    query = query.eq('difficulty_level', filters.difficulty);
+  }
+
+  // Tag filtering - applied via the inner join in select OR additional filter if needed
+  if (filters.tagIds && filters.tagIds.length > 0) {
+    // The !inner join in `selectTagsJoin` already handles this implicitly
+    // For clarity or more complex scenarios, could add: .in('flashcard_tags.tag_id', filters.tagIds)
+    // But let's rely on the !inner join mechanism for now.
+  }
+
+  if (filters.searchTerm) {
+    query = query.or(`question.ilike.%${filters.searchTerm}%,answer.ilike.%${filters.searchTerm}%`);
+  }
+
+  // --- Execute Query ---
+  // console.log("Executing Supabase query...", query);
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching flashcards:", error);
+    throw error;
+  }
+  // console.log("Supabase raw data received:", data);
+
+  // --- Process Data ---
+  const processedData = (data || []).map((fc: any) => {
+    // Extract tags - handle case where left join yields no tags
+    const tags: Tag[] = (fc.flashcard_tags || []).map((ft: any) => ft?.tag).filter(Boolean);
+
+    // Extract and structure the topic and its subject (handle potential arrays - though !inner should prevent)
+    let processedTopic: Topic | undefined = undefined;
+    if (fc.topic) {
+      // Inner join on topic ensures it's not null/array
+      const rawTopic = fc.topic;
+      let processedSubject: Subject | undefined = undefined;
+      if (rawTopic.subject) {
+        // Subject relation might still be array depending on schema def? Safely handle.
+        const rawSubject = Array.isArray(rawTopic.subject) ? rawTopic.subject[0] : rawTopic.subject;
+        if (rawSubject) {
+          processedSubject = { id: rawSubject.id, name: rawSubject.name };
+        }
+      }
+      processedTopic = {
+        id: rawTopic.id,
+        name: rawTopic.name,
+        subject_id: rawTopic.subject_id,
+        subject: processedSubject
+      };
     }
 
-    // Extract unique topics for the selected grade and subject
-    const topics = data ? [...new Set(data.map((item: any) => item.topic))].sort() : [];
-    console.log(`Available topics for grade ${grade}, subject ${subject}:`, topics); // Debugging
-    const result: string[] = topics;
-    return result;
-  } catch (err) {
-    console.error(`Failed to get topics for grade ${grade}, subject ${subject}:`, err);
-    return [];
-  }
+    const structuredFlashcard: FlashcardData = {
+      id: fc.id,
+      topic_id: fc.topic_id,
+      grade: fc.grade,
+      question: fc.question,
+      answer: fc.answer,
+      difficulty_level: fc.difficulty_level,
+      created_at: fc.created_at,
+      updated_at: fc.updated_at,
+      topic: processedTopic,
+      tags: tags,
+    };
+    return structuredFlashcard;
+  }).filter(fc => fc.topic !== undefined); // Ensure flashcards have a topic after processing
+
+  // console.log("Processed flashcard data:", processedData);
+  return processedData;
 }
 
-// --- User Progress Functions ---
+// Add a new flashcard (and associate tags)
+export async function addFlashcard(
+  flashcardInput: Omit<FlashcardData, 'id' | 'created_at' | 'updated_at' | 'topic' | 'tags'>,
+  tagIds: string[] = [] // Optional array of tag IDs to associate
+): Promise<FlashcardData | null> {
 
-// Updated function signature to return FlashcardProgressData
+  // 1. Insert the flashcard
+  const { data: newFlashcard, error: insertError } = await supabase
+    .from('flashcards')
+    .insert({
+      topic_id: flashcardInput.topic_id,
+      grade: flashcardInput.grade,
+      question: flashcardInput.question,
+      answer: flashcardInput.answer,
+      difficulty_level: flashcardInput.difficulty_level,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Supabase add flashcard error:", insertError);
+    throw insertError;
+  }
+
+  if (!newFlashcard) {
+    throw new Error("Failed to insert flashcard or retrieve the inserted row.");
+  }
+
+  // 2. If tags are provided, insert into flashcard_tags
+  if (tagIds.length > 0) {
+    const tagLinks = tagIds.map(tagId => ({
+      flashcard_id: newFlashcard.id,
+      tag_id: tagId
+    }));
+
+    const { error: tagLinkError } = await supabase
+      .from('flashcard_tags')
+      .insert(tagLinks);
+
+    if (tagLinkError) {
+      console.error("Error linking tags to flashcard:", tagLinkError);
+      // Optionally, consider rolling back the flashcard insert or logging a warning
+      // For now, we'll throw the error
+      throw tagLinkError;
+    }
+  }
+
+  // 3. Return the newly created flashcard (tags won't be populated here unless re-fetched)
+  return newFlashcard as FlashcardData;
+}
+
+// --- User Progress Functions (Keep as is for now) ---
+
 export async function updateFlashcardProgress(userId: string, flashcardId: string, isCorrect: boolean): Promise<FlashcardProgressData> {
   if (!userId || !flashcardId) {
     console.error("User ID and Flashcard ID are required for progress update.");
     throw new Error("User ID and Flashcard ID are required.");
   }
-
-  // Call the database function to upsert the progress
   const { data, error } = await supabase.rpc('upsert_flashcard_progress', {
     p_user_id: userId,
     p_flashcard_id: flashcardId,
     p_is_correct: isCorrect
   });
-
   if (error) {
-    // Log the full error object for more details
-    console.error("Supabase RPC update progress error:", JSON.stringify(error, null, 2)); 
-    // Throw the error so the calling component can handle it (e.g., show a toast)
+    console.error("Supabase RPC update progress error:", JSON.stringify(error, null, 2));
     throw error;
   }
-
-  // The RPC function now returns the updated row, which should be in 'data'
-  // We might get an array with one item, so handle that.
   if (!data) {
     throw new Error("No data returned from progress update.");
   }
-
-  // Assuming the function returns a single row which is the first element
-  // Adjust if Supabase RPC returns data differently in your version
   const updatedProgress: FlashcardProgressData = Array.isArray(data) ? data[0] : data;
-
   if (!updatedProgress) {
-      throw new Error("Returned progress data is invalid.");
+    throw new Error("Returned progress data is invalid.");
   }
-
-  console.log("Progress update successful, returned:", updatedProgress);
-  return updatedProgress; // Return the detailed progress
+  // console.log("Progress update successful, returned:", updatedProgress);
+  return updatedProgress;
 }
 
-// Fetch progress details for a single flashcard
 export async function fetchSingleFlashcardProgress(userId: string, flashcardId: string): Promise<FlashcardProgressData | null> {
   if (!userId || !flashcardId) {
     console.error("User ID and Flashcard ID are required to fetch progress.");
-    // Return null or throw error based on how you want to handle this in the UI
-    return null; 
+    return null;
   }
-
   const { data, error } = await supabase
     .from('user_flashcard_progress')
-    .select('*') // Select all columns: user_id, flashcard_id, is_correct, last_attempted_at, correct_count, incorrect_count, level, next_review_at
+    .select('*')
     .eq('user_id', userId)
     .eq('flashcard_id', flashcardId)
-    .maybeSingle(); // Use maybeSingle() to get one record or null if not found
-
+    .maybeSingle();
   if (error) {
-      // Don't throw error for "No rows found" (PGRST116), just return null
-      if (error.code === 'PGRST116') {
-          return null; 
-      }
-      console.error("Supabase fetch single progress error:", JSON.stringify(error, null, 2));
-      throw error; // Throw other errors
-  }
-
-  return data as FlashcardProgressData | null;
-}
-
- // Optional: Add function for Admin to add flashcards
-export async function addFlashcard(flashcard: Omit<FlashcardData, 'id' | 'created_at'>) {
-  const { data, error } = await supabase
-                            .from("flashcards")
-                            .insert([flashcard])
-                            .select(); // Select to return the inserted data
-
-  if (error) {
-    console.error("Supabase add flashcard error:", error);
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    console.error("Supabase fetch single progress error:", JSON.stringify(error, null, 2));
     throw error;
   }
-  return data ? data[0] : null;
+  // console.log("Single progress fetched:", data); // Example if there was one here
+  return data as FlashcardProgressData | null;
 }

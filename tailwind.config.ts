@@ -53,6 +53,7 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				"skutopia-brand-green": "#046A38",
 				skutopia: {
 					50: '#e6f0ed',
 					100: '#cce1db',

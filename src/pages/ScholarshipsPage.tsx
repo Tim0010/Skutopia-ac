@@ -88,7 +88,7 @@ const ScholarshipsPage: React.FC = () => {
                     <CardDescription>Filter by country, field of study, and academic level.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                     {/* Country Filter */}
+                    {/* Country Filter */}
                     <Select value={selectedCountry || "all"} onValueChange={value => setSelectedCountry(value === "all" ? "" : value)}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select Country" />
@@ -101,7 +101,7 @@ const ScholarshipsPage: React.FC = () => {
                         </SelectContent>
                     </Select>
 
-                     {/* Field of Study Filter */}
+                    {/* Field of Study Filter */}
                     <Select value={selectedField || "all"} onValueChange={value => setSelectedField(value === "all" ? "" : value)}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select Field of Study" />
@@ -114,8 +114,8 @@ const ScholarshipsPage: React.FC = () => {
                         </SelectContent>
                     </Select>
 
-                     {/* Level Filter */}
-                     <Select value={selectedLevel || "all"} onValueChange={value => setSelectedLevel(value === "all" ? "" : value)}>
+                    {/* Level Filter */}
+                    <Select value={selectedLevel || "all"} onValueChange={value => setSelectedLevel(value === "all" ? "" : value)}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select Level" />
                         </SelectTrigger>
@@ -128,6 +128,11 @@ const ScholarshipsPage: React.FC = () => {
                     </Select>
                 </CardContent>
             </Card>
+
+            {/* Deadline Note */}
+            <p className="text-sm text-muted-foreground text-center mb-4">
+                Note: Deadlines highlighted in red indicate that the application deadline has passed.
+            </p>
 
             {/* Loading State */}
             {loading && (
@@ -147,7 +152,7 @@ const ScholarshipsPage: React.FC = () => {
 
             {/* No Results State */}
             {!loading && !error && scholarships.length === 0 && (
-                 <p className="text-center text-muted-foreground py-10">No scholarships found matching your criteria.</p>
+                <p className="text-center text-muted-foreground py-10">No scholarships found matching your criteria.</p>
             )}
 
             {/* Scholarships List - Using Cards */}
@@ -155,7 +160,7 @@ const ScholarshipsPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {scholarships.map((scholarship) => (
                         <Card key={scholarship.id} className="flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
-                             <CardHeader>
+                            <CardHeader>
                                 <CardTitle className="text-lg">{scholarship.title}</CardTitle>
                                 <CardDescription className="text-sm pt-1">{scholarship.organization}</CardDescription>
                             </CardHeader>

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mail, Linkedin, GraduationCap } from "lucide-react";
+import { Mail, Linkedin, GraduationCap, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import PublicLayout from "@/components/PublicLayout";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ interface TeamMember {
   bio: string;
   email: string;
   linkedin: string;
+  experience?: string;
 }
 
 // Animation variants
@@ -37,48 +38,54 @@ export default function OurTeam() {
   // Updated team data structure with 5 members
   const teamMembers: TeamMember[] = [
     {
-      name: "Timothy Chileshe",
-      role: "Founder & CEO",
-      image: "/assets/testimonials/Rodwell.jpg", // Placeholder
-      education: "PhD in Education, University of Zambia",
-      bio: "Driven visionary with 15+ years in EdTech, passionate about transforming Zambian education through technology and mentorship.",
-      email: "mailto:timothy.chileshe@skutopia.com",
+      name: "Timothy Chibinda",
+      role: "Co-Founder & CEO",
+      image: "/assets/founders/timothy-1.jpg",
+      education: "Third year Computer Science Student | Ashoka University",
+      bio: "Driven visionary with 5+ years in EdTech, passionate about transforming Zambian education through technology.",
+      experience: "Kucetekela Foundation Alumni, Yale Young African and Global Scholar Alumni, 2x MasterCard Foundation Scholar finalist",
+      email: "mailto:timothy.kasupa.chibinda@gmail.com",
+      linkedin: "www.linkedin.com/in/chibinda"
+    },
+    {
+      name: "Kelvin Chibinda",
+      role: "Co-Founder & COO",
+      image: "/assets/founders/chibinda.jpg", // Placeholder
+      education: "BSc in Mathematics and English, CS | University of Zambia, Kwame Nkrumah University ",
+      bio: "Collaborates closely with product, marketing, and finance to align platform development with strategic business goals, enabling data-driven decisions and exceptional end-to-end customer experiences.",
+      experience: "2022 Genius STEM award winner, Innovative Stem Tutor",
+      email: "mailto:kelvin.chibinda@skutopia.com",
       linkedin: "#" // Add actual LinkedIn URL
     },
     {
-      name: "Victoria Phiri",
-      role: "Head of Curriculum",
-      image: "/assets/testimonials/florence.jpg", // Placeholder
-      education: "Master's in Educational Psychology",
-      bio: "Expert curriculum developer ensuring Skutopia's content is engaging, effective, and aligned with the highest educational standards.",
-      email: "mailto:victoria.phiri@skutopia.com",
+      name: "Omera Yusurf",
+      role: "Public Relations Manager",
+      image: "/assets/founders/Omera.jpg", // Placeholder
+      education: "Second year student, Political Science, International relations and Entrepreneurship | University of Zambia",
+      bio: "Expert in public relations, marketing, and community engagement, ensuring Skutopia's brand is visible and impactful in the Zambian education landscape.",
+      experience: "Placeholder: Add Omera's relevant experience here.",
+      email: "mailto:omera.yusurf@skutopia.com",
+      linkedin: "#" // Add actual LinkedIn URL
+    },
+
+    {
+      name: "Victoria Stanley",
+      role: "CFO",
+      image: "/assets/founders/victoria-1.jpg", // Placeholder
+      education: "BA in Economics and Finance | Ashoka University",
+      bio: "Oversees financial operations, ensuring strategic alignment with business goals and responsible financial management.",
+      experience: "Placeholder: Add Victoria's relevant experience here.",
+      email: "mailto:victoria.stanley@gmail.com",
       linkedin: "#" // Add actual LinkedIn URL
     },
     {
-      name: "Omera Mwamba",
-      role: "Lead Software Engineer",
-      image: "/assets/icons/chibinda.jpg", // Placeholder
-      education: "BSc in Computer Science",
-      bio: "Leads the technical team, building and refining the Skutopia platform with a focus on user experience and scalability.",
-      email: "mailto:omera.mwamba@skutopia.com",
-      linkedin: "#" // Add actual LinkedIn URL
-    },
-    {
-      name: "Grace Tembo",
-      role: "Mentorship Coordinator",
-      image: "/assets/icons/Chungu.jpg", // Placeholder
-      education: "BA in Social Work",
-      bio: "Connects students with dedicated mentors, fostering supportive relationships that guide academic and personal growth.",
-      email: "mailto:grace.tembo@skutopia.com",
-      linkedin: "#" // Add actual LinkedIn URL
-    },
-    {
-      name: "Michael Zulu",
-      role: "Content Director",
-      image: "/assets/features/mentors.png", // Placeholder
-      education: "MA in African Literature",
-      bio: "Oversees the creation of high-quality, culturally relevant learning materials tailored for the Zambian curriculum.",
-      email: "mailto:michael.zulu@skutopia.com",
+      name: "Yonas ",
+      role: "CMO",
+      image: "/assets/founders/yonas.jpg", // Placeholder
+      education: "BA in Economics and Finance | Ashoka University",
+      bio: "Develops and implements marketing and sales strategies to drive customer acquisition and revenue.",
+      experience: "Placeholder: Add Yonas's relevant experience here.",
+      email: "mailto:yonas.yonas@skutopia.com",
       linkedin: "#" // Add actual LinkedIn URL
     }
   ];
@@ -110,10 +117,17 @@ export default function OurTeam() {
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{member.name}</h3>
               <p className="text-sm font-semibold text-skutopia-600 dark:text-skutopia-400 mb-3">{member.role}</p>
 
-              <div className="flex items-start text-xs text-gray-500 dark:text-gray-400 mb-4">
+              <div className="flex items-start text-xs text-gray-500 dark:text-gray-400 mb-2">
                 <GraduationCap className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
                 <span>{member.education}</span>
               </div>
+
+              {member.experience && (
+                <div className="flex items-start text-xs text-gray-500 dark:text-gray-400 mb-4 italic">
+                  <Briefcase className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 opacity-80" />
+                  <span>{member.experience}</span>
+                </div>
+              )}
 
               <p className="text-gray-600 dark:text-gray-300 text-sm mb-5 flex-grow">{member.bio}</p>
 

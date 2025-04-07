@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import Callback from "./pages/auth/Callback";
 import MentorDirectory from "./pages/MentorDirectory";
 import MentorProfile from "./pages/MentorProfile";
 import VideoHub from "./pages/VideoHub";
@@ -60,23 +61,24 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
-              
+              <Route path="/auth/callback" element={<Callback />} />
+
               {/* About Section Routes */}
               <Route path="/our-mission" element={<OurMission />} />
               <Route path="/our-team" element={<OurTeam />} />
               <Route path="/contact-us" element={<ContactUs />} />
-              
+
               {/* Resources Section Routes */}
               <Route path="/study-materials" element={<StudyMaterials />} />
-              
+
               {/* Legal Pages */}
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/cookie-policy" element={<CookiePolicy />} />
-              
+
               {/* Community Page */}
               <Route path="/join-community" element={<JoinCommunity />} />
-              
+
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -87,12 +89,12 @@ const App = () => (
                 <Route path="/quizzes" element={<QuizPage />} />
                 <Route path="/quiz/:quizId" element={<QuizRunner />} />
                 <Route path="/pastpapers" element={<PastPapersPage />} />
-                <Route path="/scholarships" element={<ScholarshipsPage />} /> 
+                <Route path="/scholarships" element={<ScholarshipsPage />} />
                 <Route path="/my-sessions" element={<MySessions />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/profile-settings" element={<ProfileSettingsPage />} />
               </Route>
-              
+
               {/* Admin Routes */}
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminDashboard />} />
