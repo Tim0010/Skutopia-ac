@@ -3,12 +3,34 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
+// Define the structure of the user_profiles table data
+interface DbUserProfile {
+  id: string; // This is the primary key of the user_profiles table
+  user_id: string; // Foreign key to auth.users
+  name?: string | null;
+  age?: number | null;
+  grade?: string | null;
+  current_school?: string | null;
+  city?: string | null;
+  avatar_url?: string | null;
+  profile_completed?: boolean | null;
+  role?: "student" | "mentor" | "admin" | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Define the structure for the user object used in the context
 interface UserProfile {
-  id: string;
+  id: string; // This should be the auth.users ID
   email: string;
   name: string;
   role: "student" | "mentor" | "admin";
   avatarUrl?: string;
+  currentSchool?: string;
+  grade?: string;
+  city?: string;
+  age?: number;
+  profileCompleted?: boolean;
 }
 
 interface AuthContextType {
@@ -106,54 +128,76 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (authUser: User) => {
     try {
-      // First, try to get profile from Supabase
-      const { data: profile, error } = await supabase
-        .from('profiles')
+      console.log("Fetching user profile for:", authUser.id);
+      const { data, error } = await supabase
+        .from('user_profiles' as any)
         .select('*')
-        .eq('id', authUser.id)
-        .single();
+        .eq('user_id', authUser.id)
+        .single<DbUserProfile>();
 
       if (error) {
-        console.error("Error fetching user profile:", error);
-        throw error;
+        if (error.code === 'PGRST116') { // Standard code for row not found
+          console.log("No profile found in user_profiles for user:", authUser.id);
+          // Set user state based only on auth data, assuming profile not completed
+          setUser({
+            id: authUser.id,
+            email: authUser.email || '',
+            name: authUser.user_metadata?.name || 'User',
+            role: authUser.app_metadata?.role || 'student',
+            avatarUrl: authUser.user_metadata?.avatar_url,
+            profileCompleted: false, // Explicitly false as no profile record exists
+          });
+        } else {
+          // Log other errors more clearly, possibly RLS or connection issues
+          console.error("Error fetching user profile (potentially RLS issue?):", error);
+          toast.error(`Error loading profile: ${error.message}. Please check permissions.`);
+          // Fallback: Use auth data but don't assume profileCompleted status
+          // Keep existing user state if possible, or default cautiously
+          setUser(currentUser => ({
+            ...(currentUser || {}), // Keep existing fields if user state already exists
+            id: authUser.id,       // Ensure essential auth fields are updated
+            email: authUser.email || '',
+            name: authUser.user_metadata?.name || currentUser?.name || 'User',
+            role: authUser.app_metadata?.role || currentUser?.role || 'student',
+            avatarUrl: authUser.user_metadata?.avatar_url || currentUser?.avatarUrl,
+            // Avoid setting profileCompleted here on unexpected errors
+            profileCompleted: currentUser?.profileCompleted ?? false, // Keep previous or default false
+          }));
+        }
+        return; // Stop processing if there was an error
       }
 
-      if (profile) {
-        setUser({
-          id: profile.id,
-          email: authUser.email || '',
-          name: profile.name || authUser.user_metadata?.name || 'User',
-          role: profile.role as "student" | "mentor" | "admin",
-          avatarUrl: profile.avatar_url
-        });
-
-        console.log("User profile loaded from database:", profile.role);
-        return;
-      }
-    } catch (error) {
-      console.error("Profile fetch error:", error);
-      // Fall back to mock data in case of error
-    }
-
-    // Fallback for development - use mock data if needed
-    const mockUser = MOCK_USERS.find(u => u.email === authUser.email);
-    if (mockUser) {
-      const { password, ...userWithoutPassword } = mockUser;
-      setUser({
-        ...userWithoutPassword,
-        id: authUser.id
-      });
-      console.log("Using mock data for user:", mockUser.role);
-    } else {
-      // Create a basic user profile
+      // If data is successfully fetched (profile exists)
+      const profileData = data;
       setUser({
         id: authUser.id,
         email: authUser.email || '',
-        name: authUser.user_metadata?.name || 'User',
-        role: 'student',
-        avatarUrl: authUser.user_metadata?.avatar_url
+        name: profileData?.name || authUser.user_metadata?.name || 'User',
+        role: profileData?.role || authUser.app_metadata?.role || 'student',
+        avatarUrl: profileData?.avatar_url || authUser.user_metadata?.avatar_url,
+        currentSchool: profileData?.current_school ?? undefined,
+        grade: profileData?.grade ?? undefined,
+        city: profileData?.city ?? undefined,
+        age: profileData?.age ?? undefined,
+        // Use the fetched profile_completed status
+        profileCompleted: profileData?.profile_completed ?? false,
       });
-      console.log("Created basic user profile");
+      console.log("User profile state updated from DB:", { completed: profileData?.profile_completed });
+
+    } catch (err) {
+      // Catch any unexpected errors during the try block
+      console.error("Unhandled error in fetchUserProfile:", err);
+      toast.error("An unexpected error occurred while loading your profile.");
+      // Final fallback
+      setUser(currentUser => ({
+        ...(currentUser || {}),
+        id: authUser.id,
+        email: authUser.email || '',
+        name: authUser.user_metadata?.name || currentUser?.name || 'User',
+        role: authUser.app_metadata?.role || currentUser?.role || 'student',
+        avatarUrl: authUser.user_metadata?.avatar_url || currentUser?.avatarUrl,
+        profileCompleted: currentUser?.profileCompleted ?? false,
+      }));
     }
   };
 
@@ -187,40 +231,17 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const getUserRole = async (userId: string): Promise<string | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error("Error getting user role:", error);
-        return null;
-      }
-
-      return data?.role || null;
-    } catch (error) {
-      console.error("Get user role error:", error);
-      return null;
-    }
-  };
-
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
     setLoading(true);
-
     try {
-      // Register with Supabase
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             name,
-            role: 'student',
             avatar_url: `https://i.pravatar.cc/150?u=${Date.now()}`
-          }
+          },
         }
       });
 
@@ -231,9 +252,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
 
-      // Successful signup
-      toast.success("Account created successfully!");
-      setLoading(false);
+      toast.success("Account created successfully! Please check your email to verify.");
       return true;
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -257,53 +276,48 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Function to manually refresh the user profile data
   const refreshUserProfile = async () => {
-    if (session?.user) {
-      await fetchUserProfile(session.user);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      console.log("Refreshing user profile...");
+      await fetchUserProfile(authUser);
+    } else {
+      console.log("No authenticated user found during refresh.");
+      setUser(null);
     }
   };
 
   const signInWithGoogle = async (): Promise<boolean> => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
       });
-
-      if (error) {
-        console.error("Google login error:", error.message);
-        toast.error(`Google login failed: ${error.message}`);
-        return false;
-      }
-
+      if (error) throw error;
+      // Redirect happens, state managed by onAuthStateChange
       return true;
     } catch (error: any) {
-      console.error("Google login error:", error);
-      toast.error("Failed to sign in with Google");
+      console.error("Google Sign-In Error:", error);
+      toast.error(error.message || "Failed to sign in with Google.");
+      setLoading(false);
       return false;
     }
   };
 
   const signInWithFacebook = async (): Promise<boolean> => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
       });
-
-      if (error) {
-        console.error("Facebook login error:", error.message);
-        toast.error(`Facebook login failed: ${error.message}`);
-        return false;
-      }
-
+      if (error) throw error;
+      // Redirect happens, state managed by onAuthStateChange
       return true;
     } catch (error: any) {
-      console.error("Facebook login error:", error);
-      toast.error("Failed to sign in with Facebook");
+      console.error("Facebook Sign-In Error:", error);
+      toast.error(error.message || "Failed to sign in with Facebook.");
+      setLoading(false);
       return false;
     }
   };

@@ -63,7 +63,7 @@ export default function OurTeam() {
       image: "/assets/founders/Omera.jpg", // Placeholder
       education: "Second year student, Political Science, International relations and Entrepreneurship | University of Zambia",
       bio: "Expert in public relations, marketing, and community engagement, ensuring Skutopia's brand is visible and impactful in the Zambian education landscape.",
-      experience: "Placeholder: Add Omera's relevant experience here.",
+      experience: "",
       email: "mailto:omera.yusurf@skutopia.com",
       linkedin: "#" // Add actual LinkedIn URL
     },
@@ -74,7 +74,7 @@ export default function OurTeam() {
       image: "/assets/founders/victoria-1.jpg", // Placeholder
       education: "BA in Economics and Finance | Ashoka University",
       bio: "Oversees financial operations, ensuring strategic alignment with business goals and responsible financial management.",
-      experience: "Placeholder: Add Victoria's relevant experience here.",
+      experience: "Aga Khan Academy Alumna, Founder of BE U, Co-founder of Because I Can.",
       email: "mailto:victoria.stanley@gmail.com",
       linkedin: "#" // Add actual LinkedIn URL
     },
@@ -84,7 +84,7 @@ export default function OurTeam() {
       image: "/assets/founders/yonas.jpg", // Placeholder
       education: "BA in Economics and Finance | Ashoka University",
       bio: "Develops and implements marketing and sales strategies to drive customer acquisition and revenue.",
-      experience: "Placeholder: Add Yonas's relevant experience here.",
+      experience: "Yale Young African Scholar Alumni",
       email: "mailto:yonas.yonas@skutopia.com",
       linkedin: "#" // Add actual LinkedIn URL
     }

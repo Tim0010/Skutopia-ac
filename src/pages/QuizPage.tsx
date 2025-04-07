@@ -8,6 +8,7 @@ import {
     fetchQuizQuestions,
     saveUserQuizAnswers,
     evaluateQuizAttempt,
+    fetchQuizAttemptScoreDetails,
     QuizQuestion,
     // UserQuizResponse,
 } from '../data/quizService';
@@ -22,6 +23,7 @@ import { Loader2 } from 'lucide-react';
 import QuizReview from './QuizReview.tsx'; // We'll create this next
 import { createNotification } from '@/data/notificationService';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { supabase } from '../lib/supabaseClient'; // Ensure supabase client is imported
 
 // Constants
 const QUESTION_TIME_LIMIT = 90; // Seconds per question
@@ -127,10 +129,10 @@ const QuizPage: React.FC = () => {
         try {
             const fetchedQuestions = await fetchQuizQuestions(selectedGrade, selectedSubject, selectedTopic, 20); // Fetch 20 questions
             if (fetchedQuestions.length < 5) { // Arbitrary minimum threshold
-                 toast({ title: "Not Enough Questions", description: `Found only ${fetchedQuestions.length} questions. Need at least 5 to start.`, variant: "default" });
-                 setQuizState('selecting');
-                 setQuestions([]);
-                 return;
+                toast({ title: "Not Enough Questions", description: `Found only ${fetchedQuestions.length} questions. Need at least 5 to start.`, variant: "default" });
+                setQuizState('selecting');
+                setQuestions([]);
+                return;
             }
             setQuestions(fetchedQuestions);
             setQuizState('taking');
@@ -163,29 +165,66 @@ const QuizPage: React.FC = () => {
         try {
             // 1. Save the raw answers
             await saveUserQuizAnswers(user.id, quizAttemptId, answersToSave);
-            
-            // 2. Trigger evaluation (assuming it returns void or just success status)
+
+            // 2. Trigger evaluation
             await evaluateQuizAttempt(user.id, quizAttemptId);
-            
+
+            // 3. Fetch the calculated score details **AFTER** evaluation
+            const scoreDetails = await fetchQuizAttemptScoreDetails(quizAttemptId);
+
+            if (scoreDetails) {
+                // 4. Prepare data and INSERT into quiz_attempts
+                const attemptData = {
+                    // id: uuidv4(), // DB generates default UUID
+                    user_id: user.id,
+                    // PROBLEM: How to get the actual quiz_id (the predefined quiz this attempt relates to)?
+                    // For now, using quizAttemptId might be a placeholder, but it's not the FK to 'quizzes'.
+                    // If questions have a quiz_id FK, we could get it from the first question.
+                    // This needs a proper solution depending on your schema design.
+                    quiz_id: questions[0]?.id || quizAttemptId, // Placeholder - assumes questions[0].id or attemptId is okay temporarily?
+                    grade: selectedGrade || null,
+                    subject: selectedSubject || null,
+                    topic: selectedTopic || null,
+                    score_percentage: scoreDetails.scorePercent,
+                    correct_answers: scoreDetails.correctAnswers,
+                    total_questions: scoreDetails.totalQuestions,
+                    submitted_at: new Date().toISOString() // Use current time
+                };
+
+                console.log("QuizPage: Saving quiz attempt summary:", attemptData);
+                const { error: insertError } = await supabase
+                    .from('quiz_attempts')
+                    .insert(attemptData);
+
+                if (insertError) {
+                    console.error("QuizPage: Failed to save quiz attempt summary:", insertError);
+                    toast({ title: "Save Error", description: "Could not save quiz summary results.", variant: "destructive" });
+                    // Don't block transition to review, but log the error
+                } else {
+                    console.log("QuizPage: Quiz attempt summary saved successfully.");
+                }
+            } else {
+                console.warn("QuizPage: Could not fetch score details to save attempt summary.");
+                toast({ title: "Warning", description: "Could not retrieve score details to save summary.", variant: "default" });
+            }
+
+            // 5. Update UI state (Notification creation commented out)
             setQuizState('reviewing');
             toast({ title: "Quiz Submitted!", description: "Review your results.", variant: "default" });
 
-            // 3. Create Generic Notification 
+            /* // --- Temporarily Commented Out Notification Logic ---
             try {
                 await createNotification({
                     user_id: user.id,
-                    // Generic message as score is not available here
-                    message: `Your results for the ${selectedTopic || 'recent'} quiz are ready!`,
-                    // Link to quiz page or dashboard. Ideally, link to the specific review if possible.
-                    // Linking directly to review might require passing quizAttemptId differently.
+                    message: `Your results for the ${selectedTopic || 'recent'} quiz are ready! Score: ${scoreDetails?.scorePercent.toFixed(0) ?? 'N/A'}%`,
                     link: `/dashboard`, 
                     type: 'quiz'
                 });
-                // Refresh notifications in the header
                 fetchNotifs(); 
             } catch (notifError) {
                 console.error("Failed to create quiz submission notification:", notifError);
             }
+            */ // --- End Commented Out Notification Logic ---
 
         } catch (error: any) {
             console.error("Error submitting quiz:", error);
@@ -195,7 +234,8 @@ const QuizPage: React.FC = () => {
         } finally {
             setLoading(prev => ({ ...prev, submit: false }));
         }
-    }, [user, quizAttemptId, userAnswers, toast, selectedTopic, fetchNotifs]); // Keep dependencies
+        // Ensure selectedGrade, selectedSubject, selectedTopic are included in dependencies if used for saving
+    }, [user, quizAttemptId, userAnswers, toast, fetchNotifs, questions, selectedGrade, selectedSubject, selectedTopic]);
 
     /**
      * Handles selecting an answer for a specific question.
@@ -264,7 +304,7 @@ const QuizPage: React.FC = () => {
                         console.error("Timer expired but could not get question ID.");
                     }
                     return 0;
-                } 
+                }
                 return prevTime - 1;
             });
         }, 1000);
@@ -323,7 +363,7 @@ const QuizPage: React.FC = () => {
                             </SelectContent>
                         </Select>
                         <Select onValueChange={handleSubjectChange} value={selectedSubject} disabled={!selectedGrade || loading.filters}>
-                             <SelectTrigger><SelectValue placeholder={loading.filters && selectedGrade && !subjects.length ? "Loading..." : "Select Subject..."} /></SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder={loading.filters && selectedGrade && !subjects.length ? "Loading..." : "Select Subject..."} /></SelectTrigger>
                             <SelectContent>
                                 {subjects.map((subject) => (
                                     <SelectItem key={subject} value={subject}>{subject}</SelectItem>
@@ -354,36 +394,36 @@ const QuizPage: React.FC = () => {
                         <CardDescription className="text-lg pt-2">{currentQuestion.question}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         <RadioGroup
-                             key={`${currentQuestion.id}-${timeLeft}`} // Re-render radio group if needed, though maybe not necessary
-                             value={userAnswers[currentQuestion.id] ?? ''} 
-                             // Wrap the handler to pass both quizId (explicitly Number) and value
-                             onValueChange={(value) => {
-                                 const currentId = currentQuestion?.id;
-                                 console.log(`Radio changed for question ID: ${currentId}`);
-                                 if (currentId) { // Check if ID exists
-                                     handleAnswerSelect(currentId, value); // Pass string ID
-                                 } else {
-                                     console.error("Radio changed but could not get question ID.");
-                                 }
-                             }} 
-                             className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                             disabled={timerExpired} // Disable options if timer expired
-                          >
+                        <RadioGroup
+                            key={`${currentQuestion.id}-${timeLeft}`} // Re-render radio group if needed, though maybe not necessary
+                            value={userAnswers[currentQuestion.id] ?? ''}
+                            // Wrap the handler to pass both quizId (explicitly Number) and value
+                            onValueChange={(value) => {
+                                const currentId = currentQuestion?.id;
+                                console.log(`Radio changed for question ID: ${currentId}`);
+                                if (currentId) { // Check if ID exists
+                                    handleAnswerSelect(currentId, value); // Pass string ID
+                                } else {
+                                    console.error("Radio changed but could not get question ID.");
+                                }
+                            }}
+                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                            disabled={timerExpired} // Disable options if timer expired
+                        >
                             {options.map((option, index) => (
                                 <div key={index} className="flex items-center space-x-2">
-                                     <RadioGroupItem value={option} id={`option-${index}`} />
-                                     <Label htmlFor={`option-${index}`} className="cursor-pointer flex-1 p-3 border rounded-md hover:bg-accent data-[state=checked]:border-primary data-[state=checked]:ring-1 data-[state=checked]:ring-primary">
-                                         {option}
+                                    <RadioGroupItem value={option} id={`option-${index}`} />
+                                    <Label htmlFor={`option-${index}`} className="cursor-pointer flex-1 p-3 border rounded-md hover:bg-accent data-[state=checked]:border-primary data-[state=checked]:ring-1 data-[state=checked]:ring-primary">
+                                        {option}
                                     </Label>
                                 </div>
                             ))}
                         </RadioGroup>
                         {/* Timer Display & Progress Bar */}
                         <div className="mt-4">
-                             <div className="w-full bg-muted rounded-full h-2.5 mb-2">
-                                <div 
-                                    className="bg-primary h-2.5 rounded-full transition-all duration-1000 ease-linear" 
+                            <div className="w-full bg-muted rounded-full h-2.5 mb-2">
+                                <div
+                                    className="bg-primary h-2.5 rounded-full transition-all duration-1000 ease-linear"
                                     style={{ width: `${(timeLeft / QUESTION_TIME_LIMIT) * 100}%` }}
                                 ></div>
                             </div>
@@ -392,7 +432,7 @@ const QuizPage: React.FC = () => {
                     </CardContent>
                     <CardFooter className="flex justify-between">
                         {/* Placeholder for potential prev button? */}
-                         <div></div>
+                        <div></div>
                         {currentQuestionIndex < questions.length - 1 ? (
                             <Button onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)} disabled={!selectedAnswerForCurrent}>
                                 Next Question

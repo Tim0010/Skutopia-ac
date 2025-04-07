@@ -15,6 +15,7 @@ import VideoHub from "./pages/VideoHub";
 import VideoLearning from "./pages/VideoLearning";
 import FlashcardsPage from "./pages/FlashcardsPage";
 import QuizPage from "./pages/QuizPage";
+import Quizzes from "./pages/Quizzes";
 import QuizRunner from "./pages/QuizRunner";
 import PastPapersPage from "./pages/PastPapersPage";
 import Scholarships from "./pages/Scholarships";
@@ -86,7 +87,8 @@ const App = () => (
                 <Route path="/mentors/:id" element={<MentorProfile />} />
                 <Route path="/videos" element={<VideoLearning />} />
                 <Route path="/flashcards" element={<FlashcardsPage />} />
-                <Route path="/quizzes" element={<QuizPage />} />
+                <Route path="/quizzes" element={<Quizzes />} />
+                <Route path="/start-quiz" element={<QuizPage />} />
                 <Route path="/quiz/:quizId" element={<QuizRunner />} />
                 <Route path="/pastpapers" element={<PastPapersPage />} />
                 <Route path="/scholarships" element={<ScholarshipsPage />} />

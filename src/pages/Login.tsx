@@ -5,9 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, Info } from "lucide-react";
+import { Shield, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 
 interface FormData {
   email: string;
@@ -56,11 +57,15 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       setError(null);
+      setIsLoading(true); // Show loading for social sign in
       await signInWithGoogle();
+      // Navigation is handled by useEffect after auth state change
     } catch (err: any) {
       setError("Failed to sign in with Google. Please try again.");
       console.error("Google sign-in error:", err);
+      setIsLoading(false); // Stop loading on error
     }
+    // setIsLoading(false); // Loading stops implicitly on success via navigation or explicitly on error
   };
 
   /* Commenting out Facebook login for now
@@ -80,32 +85,45 @@ const Login = () => {
     setError(null);
 
     try {
-      await login(data.email, data.password);
-      // No explicit navigation here; useEffect handles it when user state updates
+      const loginSuccess = await login(data.email, data.password);
+      // login function in AuthContext already handles setting user state.
+      // The useEffect hook above will handle navigation if loginSuccess is true
+      // and the user state gets updated.
+      if (!loginSuccess) {
+        // If login function itself returned false (e.g., due to specific internal checks)
+        // but didn't throw the specific errors we catch below.
+        setError("Login failed. Please check your credentials.");
+      }
       console.log("Login submitted, waiting for user state update...");
     } catch (err: any) {
-      // Handle specific Supabase auth errors if possible
-      if (err.message.includes('Invalid login credentials')) {
+      console.error("Login error caught:", err);
+      // Check for specific Supabase error messages
+      if (err.message && err.message.toLowerCase().includes('email not confirmed')) {
+        setError("Please verify your email address by clicking the link sent to your inbox before logging in.");
+        toast.error("Email not verified. Please check your inbox.", { duration: 6000 });
+      } else if (err.message && err.message.toLowerCase().includes('invalid login credentials')) {
         setError("Invalid email or password. Please try again.");
+        toast.error("Invalid email or password.");
       } else {
         setError("An unexpected error occurred during login.");
+        toast.error("Login failed due to an unexpected error.");
       }
-      console.error("Login error:", err);
     } finally {
+      // Ensure loading is always stopped
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link to="/" className="flex justify-center">
           <Logo className="h-12 w-auto" />
         </Link>
-        <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
           Sign in to your account
         </h1>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Or{" "}
           <Link to="/signup" className="font-medium text-skutopia-600 hover:text-skutopia-500">
             create a new account
@@ -114,14 +132,15 @@ const Login = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {/* Social Login Buttons */}
           <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center space-x-2"
+              className="w-full flex items-center justify-center space-x-2 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
               onClick={handleGoogleSignIn}
+              disabled={isLoading}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -161,16 +180,16 @@ const Login = () => {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
+              <Separator className="w-full dark:bg-gray-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with email</span>
             </div>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email address
               </label>
               <div className="mt-1">
@@ -185,16 +204,17 @@ const Login = () => {
                       message: "Invalid email address"
                     }
                   })}
-                  className={errors.email ? "border-red-500" : ""}
+                  className={`dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 ${errors.email ? "border-red-500 dark:border-red-500" : ""}`}
+                  disabled={isLoading}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password
               </label>
               <div className="mt-1">
@@ -209,10 +229,11 @@ const Login = () => {
                       message: "Password must be at least 6 characters"
                     }
                   })}
-                  className={errors.password ? "border-red-500" : ""}
+                  className={`dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 ${errors.password ? "border-red-500 dark:border-red-500" : ""}`}
+                  disabled={isLoading}
                 />
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password.message}</p>
                 )}
               </div>
             </div>
@@ -223,9 +244,9 @@ const Login = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-skutopia-600 focus:ring-skutopia-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-skutopia-600 focus:ring-skutopia-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                   Remember me
                 </label>
               </div>
@@ -238,9 +259,10 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-                <span className="block sm:inline">{error}</span>
-              </div>
+              <Alert variant="destructive">
+                <Shield className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
             <div>
@@ -249,7 +271,8 @@ const Login = () => {
                 className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>
           </form>

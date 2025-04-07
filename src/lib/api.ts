@@ -51,7 +51,7 @@ export async function fetchDashboardData(userId: string, userInfo?: { name?: str
 
   // Ensure user exists before fetching data
   const user = await ensureUserExists(userId, userInfo);
-  
+
   if (!user) {
     throw new Error("Failed to ensure user exists in database.");
   }
@@ -69,9 +69,18 @@ export async function fetchDashboardData(userId: string, userInfo?: { name?: str
     .eq("user_id", userId)
     .order("session_time", { ascending: true });
 
+  // Fetch recent activities
+  const { data: recentActivities, error: activitiesError } = await supabase
+    .from("recent_activities")
+    .select("*")
+    .eq("user_id", userId)
+    .order("timestamp", { ascending: false })
+    .limit(10);
+
   // Basic error handling
   if (progressError) console.error("Error fetching progress:", progressError.message);
   if (sessionsError) console.error("Error fetching sessions:", sessionsError.message);
+  if (activitiesError) console.error("Error fetching recent activities:", activitiesError.message);
 
   // Get locally stored sessions (from our workaround)
   let localSessions = [];
@@ -102,5 +111,6 @@ export async function fetchDashboardData(userId: string, userInfo?: { name?: str
     user,
     progress: progress || [],
     sessions: allSessions,
+    recentActivities: recentActivities || []
   };
 }

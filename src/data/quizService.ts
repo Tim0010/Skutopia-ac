@@ -81,7 +81,7 @@ export const fetchQuizSubjects = async (grade: string): Promise<string[]> => {
     }
     // Extract unique subjects, ensure they are strings, then cast
     const uniqueSubjects = [...new Set(data.map(item => String(item.subject)))] as string[];
-     console.log(`Available quiz subjects for grade ${grade}:`, uniqueSubjects);
+    console.log(`Available quiz subjects for grade ${grade}:`, uniqueSubjects);
     return uniqueSubjects.sort();
 };
 
@@ -98,8 +98,8 @@ export const fetchQuizTopics = async (grade: string, subject: string): Promise<s
         throw error;
     }
     // Extract unique topics, ensure they are strings, then cast
-     const uniqueTopics = [...new Set(data.map(item => String(item.topic)))] as string[];
-     console.log(`Available quiz topics for grade ${grade}, subject ${subject}:`, uniqueTopics);
+    const uniqueTopics = [...new Set(data.map(item => String(item.topic)))] as string[];
+    console.log(`Available quiz topics for grade ${grade}, subject ${subject}:`, uniqueTopics);
     return uniqueTopics.sort();
 };
 
@@ -185,7 +185,7 @@ export const saveUserQuizAnswers = async (
  * and updating the is_correct status in the database.
  */
 export const evaluateQuizAttempt = async (userId: string, quizAttemptId: string): Promise<void> => {
-     console.log(`Evaluating quiz attempt ${quizAttemptId} for user ${userId}`);
+    console.log(`Evaluating quiz attempt ${quizAttemptId} for user ${userId}`);
     // 1. Fetch the user's responses for this attempt
     const { data: userResponses, error: responseError } = await supabase
         .from('user_quiz_responses')
@@ -245,17 +245,18 @@ export const evaluateQuizAttempt = async (userId: string, quizAttemptId: string)
     }
 
     if (errors.length > 0) {
-         console.error("Evaluation complete with some errors.");
+        console.error("Evaluation complete with some errors.");
         // Decide if we need to throw a combined error
         // throw new Error("Failed to update some quiz responses during evaluation.");
     } else {
-         console.log("Evaluation complete, all responses updated.");
+        console.log("Evaluation complete, all responses updated.");
     }
 };
 
 
 /**
- * Fetches the results of a specific quiz attempt, including question details.
+ * Fetches the evaluated results for a specific quiz attempt.
+ * This is used for reviewing answers.
  */
 export const fetchQuizAttemptResults = async (userId: string, quizAttemptId: string): Promise<QuizResult[]> => {
     console.log(`Fetching results for quiz attempt ${quizAttemptId}`);
@@ -263,33 +264,67 @@ export const fetchQuizAttemptResults = async (userId: string, quizAttemptId: str
         .from('user_quiz_responses')
         .select(`
             *,
-            quizzes (
-                *
-            )
+            question: quizzes (*)
         `)
         .eq('user_id', userId)
-        .eq('quiz_attempt_id', quizAttemptId)
-        .order('created_at', { ascending: true }); // Ensure results are in order
+        .eq('quiz_attempt_id', quizAttemptId);
 
     if (error) {
         console.error("Error fetching quiz attempt results:", error);
         throw error;
     }
+    console.log("Fetched quiz results:", data);
+    return (data as QuizResult[]) || [];
+};
 
-    if (!data) return [];
+/**
+ * Calculates the score summary for a completed and evaluated quiz attempt.
+ */
+export interface QuizAttemptScoreDetails {
+    correctAnswers: number;
+    totalQuestions: number;
+    scorePercent: number;
+}
 
-    // Manually structure the result to match QuizResult interface, as Supabase nests the relation
-    const results = data.map(item => ({
-        ...item, // Spread user_quiz_responses fields
-        question: item.quizzes as QuizQuestion // Assign the nested quizzes object
-    })) as QuizResult[];
+export const fetchQuizAttemptScoreDetails = async (
+    quizAttemptId: string
+): Promise<QuizAttemptScoreDetails | null> => {
+    console.log(`Fetching score details for quiz attempt ${quizAttemptId}`);
+    if (!quizAttemptId) {
+        console.error("Cannot fetch score details without quizAttemptId");
+        return null;
+    }
 
+    const { data, error, count } = await supabase
+        .from('user_quiz_responses')
+        .select('id, is_correct', { count: 'exact' })
+        .eq('quiz_attempt_id', quizAttemptId);
 
-    // Remove the now redundant nested 'quizzes' key if necessary (depends on how you use it)
-    results.forEach(r => delete (r as any).quizzes);
+    if (error) {
+        console.error("Error fetching responses for score calculation:", error);
+        throw error;
+    }
 
-    console.log("Fetched quiz results:", results);
-    return results;
+    if (!data || count === null || count === 0) {
+        console.warn(`No responses found for attempt ${quizAttemptId} to calculate score.`);
+        return {
+            correctAnswers: 0,
+            totalQuestions: 0,
+            scorePercent: 0
+        };
+    }
+
+    const totalQuestions = count;
+    const correctAnswers = data.filter(r => r.is_correct === true).length;
+    const scorePercent = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+    const scorePercentFormatted = parseFloat(scorePercent.toFixed(2));
+
+    console.log(`Score details calculated for ${quizAttemptId}:`, { correctAnswers, totalQuestions, scorePercent: scorePercentFormatted });
+    return {
+        correctAnswers,
+        totalQuestions,
+        scorePercent: scorePercentFormatted,
+    };
 };
 
 // --- Leaderboard Functions ---
@@ -324,7 +359,7 @@ export const fetchLeaderboardWithMaxScore = async (limit: number = 10): Promise<
         .order('highest_score', { ascending: false })
         .limit(1)
         .single();
-        // .rpc('get_max_leaderboard_score'); // Alternative: Use a DB function if complex/RLS issues
+    // .rpc('get_max_leaderboard_score'); // Alternative: Use a DB function if complex/RLS issues
 
     if (maxScoreError && maxScoreError.code !== 'PGRST116') { // Ignore 'PGRST116' (No rows found) if leaderboard is empty
         console.error("Error fetching max score:", maxScoreError);

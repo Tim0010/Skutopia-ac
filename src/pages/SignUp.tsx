@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z
   .object({
@@ -63,26 +64,30 @@ const SignUp = () => {
     },
   });
 
-  const handleAuthSuccess = () => {
+  const handleSocialAuthSuccess = () => {
     const redirectPath = sessionStorage.getItem('postLoginRedirect');
     const navigateTo = redirectPath || '/dashboard';
-
     if (redirectPath) {
       sessionStorage.removeItem('postLoginRedirect');
-      console.log(`SignUp Success: Found redirect path: ${navigateTo}`);
+      console.log(`Social Auth Success: Found redirect path: ${navigateTo}`);
     }
-
-    console.log(`SignUp Success: Navigating to ${navigateTo}`);
+    console.log(`Social Auth Success: Navigating to ${navigateTo}`);
     navigate(navigateTo, { replace: true });
   };
 
   const handleGoogleSignIn = async () => {
     setSubmitError(null);
+    setIsLoading(true);
     try {
-      await signInWithGoogle();
+      const success = await signInWithGoogle();
+      if (!success) {
+        setSubmitError("Google Sign-In failed or was cancelled.");
+        setIsLoading(false);
+      }
     } catch (err: any) {
       setSubmitError("Failed to sign in with Google. Please try again.");
       console.error("Google sign-in error:", err);
+      setIsLoading(false);
     }
   };
 
@@ -102,10 +107,20 @@ const SignUp = () => {
     setIsLoading(true);
     setSubmitError(null);
     try {
-      await signup(data.name, data.email, data.password);
-      handleAuthSuccess();
+      const signupSuccessful = await signup(data.name, data.email, data.password);
+
+      if (signupSuccessful) {
+        toast.success("Account created! Please check your email to verify your account before logging in.", {
+          duration: 8000,
+        });
+        console.log("Email/Password SignUp Success: Account created, redirecting to login.");
+        navigate("/login");
+      } else {
+        setSubmitError("Signup failed. Please try again.");
+        toast.error("Signup failed. Please try again.");
+      }
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error catch block:", error);
       setSubmitError(error.message || "Failed to create account. Please try again.");
       toast.error(error.message || "Failed to create account.");
     } finally {
@@ -135,13 +150,13 @@ const SignUp = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {/* Social Login Buttons */}
           <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center space-x-2"
               onClick={handleGoogleSignIn}
+              disabled={isLoading}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -239,7 +254,7 @@ const SignUp = () => {
                       <Input
                         {...field}
                         type="password"
-                        placeholder="Create a password"
+                        placeholder="Create a password (min. 6 characters)"
                         disabled={isLoading}
                       />
                     </FormControl>
@@ -253,7 +268,7 @@ const SignUp = () => {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
+                    <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -271,7 +286,7 @@ const SignUp = () => {
                 control={form.control}
                 name="terms"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow dark:border-gray-700">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -281,21 +296,13 @@ const SignUp = () => {
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
-                        I agree to the{" "}
-                        <Link
-                          to="/terms-of-service"
-                          className="text-skutopia-600 hover:text-skutopia-500"
-                        >
-                          terms of service
-                        </Link>{" "}
-                        and{" "}
-                        <Link
-                          to="/privacy-policy"
-                          className="text-skutopia-600 hover:text-skutopia-500"
-                        >
-                          privacy policy
-                        </Link>
+                        Agree to terms and conditions
                       </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        You agree to our{" "}
+                        <Link to="/terms-of-service" className="underline hover:text-primary" target="_blank">Terms of Service</Link> and{" "}
+                        <Link to="/privacy-policy" className="underline hover:text-primary" target="_blank">Privacy Policy</Link>.
+                      </p>
                       <FormMessage />
                     </div>
                   </FormItem>
@@ -303,18 +310,15 @@ const SignUp = () => {
               />
 
               {submitError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-md">
-                  {submitError}
-                </div>
+                <p className="text-sm text-red-600">{submitError}</p>
               )}
 
-              <Button
-                type="submit"
-                className="w-full bg-skutopia-600 hover:bg-skutopia-700"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating account..." : "Create account"}
-              </Button>
+              <div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isLoading ? "Creating account..." : "Sign up"}
+                </Button>
+              </div>
             </form>
           </Form>
         </div>
